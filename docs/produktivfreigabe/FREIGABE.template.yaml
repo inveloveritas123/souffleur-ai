@@ -1,0 +1,17 @@
+# Produktivfreigabe — von MENSCHEN ausgefuellt und signiert.
+# Kopiere diese Datei nach docs/produktivfreigabe/FREIGABE.yaml im Projekt und fuelle sie aus.
+# Der Agent darf sie NICHT selbst setzen (kein Self-Sign). Gates J1/J2 pruefen sie; das Profil
+# `produktiv` wird nur GRUEN, wenn beide Abnahmen erteilt + vollstaendig sind.
+
+security:
+  freigegeben: false                 # true erst nach echter Security-Review durch einen Menschen
+  von: "<Name (Rolle, z. B. Security Lead)>"
+  datum: "<YYYY-MM-DD>"
+  referenz: "docs/produktivfreigabe/SECURITY-REVIEW.md"
+
+datenschutz:
+  freigegeben: false                 # true erst nach DSB-/Datenschutz-Pruefung (inkl. DSFA falls noetig)
+  von: "<Name DSB / Datenschutzverantwortliche*r>"
+  datum: "<YYYY-MM-DD>"
+  referenz: "docs/produktivfreigabe/DATENSCHUTZ-REVIEW.md"
+  dsfa: "<Pfad zur DSFA/DPIA ODER 'nicht erforderlich (Begruendung)'>"

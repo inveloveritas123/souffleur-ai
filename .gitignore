@@ -1,0 +1,13 @@
+.env
+.env.*
+*.key
+*.pem
+secrets/
+.werkbank/STATE.md
+.werkbank/minds/
+.werkbank/budget.json
+node_modules/
+__pycache__/
+_bmad/
+_bmad-output/
+.claude/

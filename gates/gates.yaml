@@ -1,0 +1,103 @@
+# WERKBANK gates.yaml — 62-Gate-Manifest
+# Prinzip: gestaffelt. Erst billige deterministische Tools (fail fast),
+# LLM-Urteils-Gates NUR auf dem, was deterministisch durchkommt -> sublinearer Token-Verbrauch.
+# flags: block (verhindert Merge/Deploy) | warn (beratend) | llm (braucht Modellurteil)
+#        | branch (pro Kunde zuschaltbar) | deterministic (Tool, kein LLM)
+# Reihenfolge der Stufen = Reihenfolge der Ausführung. Stufe bricht bei erstem block-FAIL ab.
+
+meta:
+  version: 2
+  promise: "GRUEN"          # completion-promise fuer den Ralph-Loop
+  fail_fast: true
+  llm_only_on_green: true   # LLM-Gates erst, wenn alle deterministischen block-Gates gruen
+
+stages:
+
+  - stage: 1_spec
+    desc: "A — Spec-Integritaet (vor jedem Bau)"
+    gates:
+      - { id: A1, name: "Spec-Pflichtfelder vollstaendig (6 Felder)", flags: [block, deterministic] }
+      - { id: A2, name: "Akzeptanzkriterien testbar formuliert",       flags: [block, deterministic] }
+      - { id: A3, name: "Handoff-Checkliste PM->Architect erfuellt",    flags: [block, deterministic] }
+      - { id: A4, name: "Spec gegen Widersprueche geprueft",            flags: [warn, llm] }
+
+  - stage: 2_static
+    desc: "B/D — Funktional & Sicherheit, statisch (kein Lauf noetig)"
+    gates:
+      - { id: B1, name: "Linter sauber (eslint/ruff/...)",             flags: [block, deterministic] }
+      - { id: B2, name: "Typecheck sauber (tsc/mypy)",                  flags: [block, deterministic] }
+      - { id: B3, name: "Build kompiliert",                            flags: [block, deterministic] }
+      - { id: D1, name: "SAST (semgrep/bandit) ohne High/Critical",    flags: [block, deterministic] }
+      - { id: D2, name: "SCA — Abhaengigkeiten ohne bekannte CVEs",    flags: [block, deterministic] }
+      - { id: D3, name: "Secret-Scan (gitleaks) — kein Secret im Diff", flags: [block, deterministic] }
+      - { id: D4, name: "Lizenz-Scan der Dependencies",                flags: [warn, deterministic] }
+
+  - stage: 3_tests
+    desc: "C — Test-Pyramide (Lauf noetig)"
+    gates:
+      - { id: C1, name: "Unit-Tests gruen",                            flags: [block, deterministic] }
+      - { id: C2, name: "Coverage >= Zielwert",                        flags: [block, deterministic] }
+      - { id: C3, name: "Integrationstests gruen",                     flags: [block, deterministic] }
+      - { id: C4, name: "E2E (Playwright) Kernflows gruen",            flags: [block, deterministic] }
+      - { id: C5, name: "Concurrency/Race-Condition-Test",             flags: [warn, deterministic] }
+      - { id: C6, name: "a11y (axe-core) ohne Violations",             flags: [warn, deterministic] }
+
+  - stage: 4_sovereignty_dsgvo
+    desc: "E — Souveraenitaet & DSGVO (dein Moat; HART)"
+    gates:
+      - { id: E1, name: "EU-Routing: jeder LLM-Call ueber EU-Endpunkt",        flags: [block, deterministic] }
+      - { id: E2, name: "PII-Scan in Logs/Prompts/Outputs — keine Klartext-PII", flags: [block, deterministic] }
+      - { id: E3, name: "Mandantentrennung: keine Tenant-uebergreifenden Zugriffe", flags: [block, deterministic] }
+      - { id: E4, name: "Audit-Log vollstaendig (AUDIT-LOG.schema.json valid)", flags: [block, deterministic] }
+      - { id: E5, name: "DSGVO-Artefakte vorhanden (PROCESSING-REGISTER, TOMs, ...)", flags: [block, deterministic] }
+      - { id: E6, name: "DPIA-Screening: bei hohem Risiko DPIA vorhanden",     flags: [block, deterministic] }
+      - { id: E7, name: "Drittland-Transfer dokumentiert/abgesichert (Kap. V)", flags: [warn, deterministic] }
+      - { id: E8, name: "Datenminimierung plausibel (Art. 25)",               flags: [warn, llm] }
+
+  - stage: 5_integrity
+    desc: "F — Modell-Integritaet (gegen Modell-Drift)"
+    gates:
+      - { id: F1, name: "Modell-Pinning gesetzt (kein 'latest')",      flags: [block, deterministic] }
+      - { id: F2, name: "Eval-on-Bump: Regressions-Eval bei Modellwechsel", flags: [block, deterministic] }
+      - { id: F3, name: "Golden-Output-Snapshots stabil",             flags: [warn, deterministic] }
+
+  - stage: 6_perf
+    desc: "G — Performance"
+    gates:
+      - { id: G1, name: "Last-/Latenztest (k6) im Budget",            flags: [warn, deterministic] }
+      - { id: G2, name: "Bundle-/Ressourcenbudget eingehalten",       flags: [warn, deterministic] }
+      - { id: G3, name: "N+1-/Query-Check",                           flags: [warn, deterministic] }
+
+  - stage: 7_maintainability
+    desc: "H — Wartbarkeit & Anti-Drift"
+    gates:
+      - { id: H1, name: "Self-documenting: keine toten Kommentare/TODOs ohne Ticket", flags: [warn, deterministic] }
+      - { id: H2, name: "Komplexitaet (cyclomatic) unter Schwelle",   flags: [warn, deterministic] }
+      - { id: H3, name: "Doku/README aktualisiert",                   flags: [warn, deterministic] }
+      - { id: H4, name: "CHANGELOG-Eintrag vorhanden (append, newest-top)", flags: [block, deterministic] }
+      - { id: H5, name: "Wellen self-contained (Dateien/Verbote/Smoke/Akzeptanz inline)", flags: [warn, deterministic] }
+      - { id: H6, name: "Drift-Audit: PRD <-> implementierte Architektur",   flags: [block, llm] }
+
+  - stage: 8_judgement
+    desc: "I — Urteils-Gates (LLM, nur auf gruenem Rest; Cross-Model)"
+    gates:
+      - { id: I1, name: "Vier-Augen-Review: Reviewer-Modell != Implementer-Modell", flags: [block, llm] }
+      - { id: I2, name: "QA-Tribunal (Dual-Model, anonymisierte Reconciliation)",    flags: [block, llm] }
+      - { id: I3, name: "Deployment-Validierung gegen echte User-Flows (Argus-Stil)", flags: [block, llm] }
+
+  - stage: 9_freigabe
+    desc: "J — Produktivfreigabe (menschliche Abnahme; KEIN Self-Sign durch den Agenten)"
+    gates:
+      - { id: J1, name: "Security-Abnahme (signierte Freigabe liegt vor)",        flags: [block, deterministic] }
+      - { id: J2, name: "Datenschutz-/DSB-Abnahme (signierte Freigabe liegt vor)", flags: [block, deterministic] }
+
+  - stage: 10_branche
+    desc: "K — Branchenregeln (branch; pro Domaene zugeschaltet: BaFin/HOAI/MDR/KRITIS ...)"
+    gates:
+      - { id: K1, name: "Branchen-Pflicht-Artefakte vorhanden (rules.yaml)",     flags: [block, deterministic, branch] }
+      - { id: K2, name: "Branchen-Fachabnahme signiert (Domaenen-Experte)",      flags: [block, deterministic, branch] }
+
+# Branchen-Gates (branch) werden pro Kunde aus branch-modules/ zugeladen, z. B.:
+# bau: HOAI-Pruefungen | finanzen: BaFin/Audit-Trail | gis: Geodaten-Lizenz | iot: Firmware-Signatur
+branch_modules:
+  enabled: []

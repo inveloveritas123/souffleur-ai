@@ -1,0 +1,8 @@
+# Branchen-Regelpaket: Finanzdienstleistung (Beispiel).
+# WERKBANK erzwingt Praesenz dieser Artefakte (K1) + die Fachabnahme (K2). Die fachliche
+# Korrektheit (MaRisk-Abbildung, Aufbewahrungsfristen, Revisionssicherheit) liefert der
+# Fach-/Compliance-Experte — WERKBANK haelt sie nur auditierbar fest.
+name: finanzen
+desc: "Finanzdienstleistung — revisionssicherer Audit-Trail, Aufbewahrung, MaRisk-Abbildung"
+required_artefacts: [AUDIT-TRAIL.md, AUFBEWAHRUNG.md, MARISK-MAPPING.md]
+required_signoff: fachaufsicht

@@ -1,0 +1,66 @@
+# WERKBANK Self-CI — "hartes Gruen" real gemacht.
+#
+# Die Dev-Tools werden installiert und MUESSEN durchlaufen (ruff, mypy, bandit, Tests),
+# danach der harte Gate-Lauf gegen das Profil `werkbank_self`. Geht nur GRUEN, wenn
+# jedes Pflicht-Gate aktiv besteht — ein SKIP (Tool fehlt / kein Check / kein Kontext)
+# zaehlt als UNGEDECKT und faerbt ROT. Auf push (main) heilt der Feedback-Schritt
+# rote Gates in Issues; der Report wird als Artefakt hochgeladen.
+name: werkbank-gates
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.9"
+
+      # SINGLE SOURCE OF TRUTH: die CI ruft NUR die Makefile-Targets. Damit laufen lokal
+      # (`make all`) und CI per Konstruktion dieselben Befehle — sie koennen nicht mehr
+      # auseinanderdriften (genau der Bug, der die CI 14 Laeufe lang unbemerkt rot hielt).
+      - name: Dev-Tools installieren
+        run: make dev-setup
+
+      - name: Lint (ruff)
+        run: make lint
+
+      - name: Typen (mypy)
+        run: make type
+
+      - name: SAST (bandit)
+        run: make sast
+
+      - name: Tests (unittest)
+        run: make test
+
+      - name: WERKBANK Gate-Lauf — hartes Gruen (Profil werkbank_self)
+        id: gate
+        run: make gate
+
+      - name: Gate-Report als Artefakt
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: gate-report
+          path: GATE-REPORT.md
+          if-no-files-found: ignore
+
+      - name: Selbstheilung — rote Gates -> Issues, gruene -> schliessen
+        if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -f feedback/feedback.py ]; then
+            python3 feedback/feedback.py --report GATE-REPORT.md --backlog /tmp/backlog.md \
+              --apply --gh-issues --close-resolved || echo "::warning::feedback-Schritt uebersprungen"
+          fi

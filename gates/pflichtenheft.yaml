@@ -1,0 +1,74 @@
+# WERKBANK Pflichtenheft — bindet die abstrakten Gates (gates.yaml) an konkrete
+# Projektpflichten. EIN Profil pro Projekt; das Profil legt fest, welche Gates
+# AKTIV BESTANDEN sein muessen, damit das Ergebnis GRUEN ist.
+#
+# Harte Regel (gates/verdict.py):
+#   GRUEN  <=>  jedes Pflicht-Gate des Profils hat Status PASS.
+#   Ein Pflicht-Gate, das FAIL ist            -> VERLETZT  -> ROT.
+#   Ein Pflicht-Gate, das SKIP/WARN/ungelaufen ist -> UNGEDECKT -> ROT.
+#   (Egal warum SKIP: Tool fehlt, kein Check, kein Kontext — "nicht geprueft" ist nie gruen.)
+#
+# So kann kein Projekt mehr gruen aussehen, weil Pflichttools fehlen oder Pflicht-
+# Artefakte (Audit-Log, DSGVO) gar nicht erst da sind.
+#
+# Profile erben via `extends` (Pflichtmenge = Vereinigung ueber die Kette).
+
+default_profile: basis
+
+profiles:
+
+  static_min:
+    desc: "Minimal-Projekt (Skript/Config) — nur stdlib-deterministische Pflicht, kein externes Tooling"
+    required: [B3, D3, F1, H4]
+
+  basis:
+    desc: "Jedes Projekt — Mindestpflicht (Lint, Typen, Build, Tests, Coverage, Secrets, Pinning, Changelog)"
+    extends: static_min
+    required: [B1, B2, C1, C2]
+
+  spec_driven:
+    desc: "Spec-getriebenes Projekt — SPEC.md ist Pflicht und muss integer sein"
+    extends: basis
+    required: [A1, A2, A3]
+
+  pii:
+    desc: "Verarbeitet personenbezogene Daten (DSGVO) — EU-Routing, PII-frei, Audit-Log, Artefakte, DPIA"
+    extends: spec_driven
+    required: [D1, E1, E2, E4, E5, E6]
+
+  multi_tenant:
+    desc: "Mehrmandantenfaehig — zusaetzlich harte Mandantentrennung"
+    extends: pii
+    required: [E3]
+
+  # Voller Audit-Umfang fuer eine produktionsreife DSGVO-App: alle harten Gates inkl.
+  # SCA (D2) UND der LLM-Review-Nachweise (A4/H6/I1/I2/I3 ueber BMAD-QA-Evidence).
+  # GRUEN heisst hier: jede Stufe aktiv bestanden — Lint/Typen/Build/Tests/Coverage,
+  # SAST+SCA+Secrets, EU/PII/Audit/Artefakte/DPIA/Mandanten, Modell-Pinning, Changelog,
+  # Drift-Audit, Vier-Augen, Tribunal, Deployment-Validierung. (Perf/E2E/a11y bleiben warn.)
+  produktion:
+    desc: "Produktionsreife DSGVO-App — voller Pflichtumfang inkl. SCA + LLM-Review-Nachweis"
+    extends: multi_tenant
+    required: [A4, D2, H6, I1, I2, I3]
+
+  # Hoechste Latte: alle technischen Gates UND die signierte menschliche Abnahme (J1 Security,
+  # J2 Datenschutz/DSB). GRUEN heisst hier wirklich 'darf mit echten Daten live' — und ist nur
+  # mit menschlicher Unterschrift erreichbar (kein Self-Sign durch den Agenten).
+  produktiv:
+    desc: "Produktiv mit echten Daten — produktion + menschliche Security-/Datenschutz-Abnahme"
+    extends: produktion
+    required: [J1, J2]
+
+  # Regulierte Branche (Finanz/Medizin/Bau/KRITIS ...): zusaetzlich die Branchen-Pflicht-Artefakte
+  # (K1) und die Fachabnahme (K2). Branche via --branch / .werkbank/branch.txt aktivieren.
+  produktiv_reguliert:
+    desc: "Produktiv in regulierter Branche — produktiv + Branchenregeln (K1 Artefakte, K2 Fachabnahme)"
+    extends: produktiv
+    required: [K1, K2]
+
+  # Profil fuer das WERKBANK-Repo selbst: kein Privacy-Kontext, kein erzwungenes SPEC,
+  # aber die volle statische + Test-Pflicht inkl. SAST. Damit ist der eigene Gate-Lauf
+  # ehrlich gruen NUR, wenn ruff/mypy/coverage/bandit installiert sind UND durchlaufen.
+  werkbank_self:
+    desc: "WERKBANK-Repo selbst — volle statische Pflicht ohne Projekt-/Privacy-Kontext"
+    required: [B1, B2, B3, C1, C2, D1, D3, F1, H4]

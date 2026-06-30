@@ -1,0 +1,13 @@
+{
+  "_comment": "Ralph-Loop In-Session-Stop-Hook. In .claude/settings.json mergen (oder werkbank-init.sh --ralph-hook).",
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          { "type": "command", "command": "python3 ralph/stop_hook.py" }
+        ]
+      }
+    ]
+  }
+}

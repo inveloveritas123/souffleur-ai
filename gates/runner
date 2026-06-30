@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# WERKBANK Gate-Runner shim -> python3 runner.py
+set -euo pipefail
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec python3 "$DIR/runner.py" "$@"

@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://werkbank/templates/AUDIT-LOG.schema.json",
+  "title": "WERKBANK Audit-Log Eintrag",
+  "description": "Unveraenderlicher Audit-Log-Eintrag (Gate E4). Keine Klartext-PII (Gate E2).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["timestamp", "actor", "action", "resource", "tenant_id", "result", "routing_region"],
+  "properties": {
+    "timestamp": { "type": "string", "format": "date-time" },
+    "actor": { "type": "string", "description": "Agent/Rolle oder Nutzer-ID (pseudonymisiert)" },
+    "action": { "type": "string", "enum": ["create", "read", "update", "delete", "export", "gate_run", "model_call"] },
+    "resource": { "type": "string", "description": "betroffenes Objekt/Datei (kein PII-Klartext)" },
+    "tenant_id": { "type": "string", "description": "Mandant (Gate E3)" },
+    "result": { "type": "string", "enum": ["success", "denied", "error"] },
+    "routing_region": { "type": "string", "enum": ["EU"], "description": "EU-Routing erzwungen (Gate E1)" },
+    "model": { "type": "string", "description": "gepinntes Modell, kein 'latest' (Gate F1)" },
+    "pii_present": { "type": "boolean", "description": "muss false sein (Gate E2)" },
+    "correlation_id": { "type": "string" }
+  }
+}

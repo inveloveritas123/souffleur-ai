@@ -1,0 +1,673 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SOUFFLEUR — EU-souveräner Echtzeit-Coaching-Copilot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#00385F;
+    --navy-2:#012C4A;
+    --navy-3:#001A2E;
+    --ink:#08151F;
+    --orange:#FF5300;
+    --orange-soft:#FF7A38;
+    --paper:#EDF1F4;
+    --paper-2:#F7F9FB;
+    --mist:#9FB6C7;
+    --mist-2:#C9D7E1;
+    --line:rgba(159,182,199,.22);
+    --line-dk:rgba(8,21,31,.12);
+    --glow:rgba(255,83,0,.45);
+    --r:14px;
+    --maxw:1140px;
+    --fdisp:'Space Grotesk',system-ui,sans-serif;
+    --fbody:'IBM Plex Sans',system-ui,sans-serif;
+    --fmono:'IBM Plex Mono',ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--navy-3);color:var(--paper);
+    font-family:var(--fbody);font-size:17px;line-height:1.6;
+    -webkit-font-smoothing:antialiased;overflow-x:hidden;
+  }
+  h1,h2,h3{font-family:var(--fdisp);font-weight:700;line-height:1.05;margin:0;letter-spacing:-.01em}
+  p{margin:0 0 1em}
+  a{color:inherit}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 28px}
+  .mono{font-family:var(--fmono)}
+  .eyebrow{font-family:var(--fmono);font-size:12.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--orange);margin:0 0 18px;font-weight:500}
+  .lead{font-size:19px;color:var(--mist-2)}
+
+  /* ---- pulse divider ---- */
+  .pulse{height:2px;width:100%;background:
+    linear-gradient(90deg,transparent,var(--orange) 18%,var(--orange-soft) 50%,var(--orange) 82%,transparent);
+    opacity:.5;position:relative}
+  .pulse::after{content:"";position:absolute;inset:0;background:inherit;filter:blur(6px);opacity:.6}
+
+  /* ---- nav ---- */
+  .nav{position:sticky;top:0;z-index:50;backdrop-filter:blur(12px);
+    background:rgba(0,26,46,.72);border-bottom:1px solid var(--line)}
+  .nav .wrap{display:flex;align-items:center;justify-content:space-between;height:62px}
+  .brand{font-family:var(--fdisp);font-weight:700;letter-spacing:.04em;font-size:18px;display:flex;align-items:center;gap:11px}
+  .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--orange);box-shadow:0 0 0 4px var(--glow);animation:breathe 2.6s ease-in-out infinite}
+  @keyframes breathe{0%,100%{box-shadow:0 0 0 3px rgba(255,83,0,.4)}50%{box-shadow:0 0 0 7px rgba(255,83,0,.05)}}
+  .navlinks{display:flex;gap:26px;font-size:14px;font-family:var(--fmono);color:var(--mist)}
+  .navlinks a{text-decoration:none;transition:color .2s}
+  .navlinks a:hover{color:var(--paper)}
+  @media(max-width:760px){.navlinks{display:none}}
+
+  /* ---- hero ---- */
+  .hero{position:relative;padding:74px 0 30px;
+    background:radial-gradient(120% 90% at 78% 0%,#073a5e 0%,var(--navy-3) 58%)}
+  .hero-grid{display:grid;grid-template-columns:1.04fr 1.18fr;gap:54px;align-items:center}
+  @media(max-width:920px){.hero-grid{grid-template-columns:1fr;gap:40px}}
+  .h-title{font-size:clamp(40px,6.4vw,76px);letter-spacing:-.02em}
+  .h-title .em{color:var(--orange)}
+  .h-sub{font-size:20px;color:var(--mist-2);margin:22px 0 8px;max-width:30ch}
+  .codetag{display:inline-flex;align-items:center;gap:9px;font-family:var(--fmono);font-size:12.5px;
+    border:1px solid var(--line);border-radius:100px;padding:7px 14px;color:var(--mist-2);margin-bottom:26px}
+  .codetag b{color:var(--orange);font-weight:500}
+  .h-claim{font-family:var(--fdisp);font-weight:500;font-size:15px;letter-spacing:.02em;color:var(--mist);margin-top:30px}
+  .h-claim b{color:var(--paper);font-weight:600}
+
+  /* ---- overlay mockup (the signature) ---- */
+  .call{position:relative;border-radius:18px;overflow:hidden;
+    background:linear-gradient(160deg,#0c2336,#06121d);
+    border:1px solid rgba(159,182,199,.14);
+    box-shadow:0 40px 90px -30px rgba(0,0,0,.7),0 0 0 1px rgba(0,0,0,.3);
+    aspect-ratio:16/10.4}
+  .call-bar{height:34px;display:flex;align-items:center;gap:7px;padding:0 14px;background:rgba(0,0,0,.32);border-bottom:1px solid rgba(255,255,255,.05)}
+  .tl{width:11px;height:11px;border-radius:50%;background:#2a4256}
+  .call-bar span{margin-left:10px;font-family:var(--fmono);font-size:11px;color:#5f7b91}
+  .tiles{position:absolute;inset:34px 0 0 0;display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px}
+  .tile{border-radius:11px;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(150deg,#143247,#0a1d2c)}
+  .tile.client{background:linear-gradient(150deg,#17384e,#0c2336)}
+  .ava{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-family:var(--fdisp);font-weight:700;font-size:24px;color:#0a1d2c}
+  .ava.a{background:linear-gradient(140deg,#7fb0cf,#bcd4e3)}
+  .ava.b{background:linear-gradient(140deg,var(--orange),var(--orange-soft))}
+  .name{position:absolute;left:11px;bottom:9px;font-family:var(--fmono);font-size:11px;color:#bcd4e3;background:rgba(0,0,0,.4);padding:3px 8px;border-radius:6px}
+  .speaking{position:absolute;inset:0;border-radius:11px;border:2px solid transparent}
+  .tile.client .speaking{border-color:rgba(255,83,0,.55);box-shadow:inset 0 0 24px rgba(255,83,0,.18);animation:talk 2.4s ease-in-out infinite}
+  @keyframes talk{0%,100%{opacity:.35}50%{opacity:1}}
+
+  /* the souffleur layer */
+  .souffleur{position:absolute;left:12px;right:12px;bottom:12px;z-index:5;
+    background:linear-gradient(180deg,rgba(2,18,30,.62),rgba(2,18,30,.86));
+    backdrop-filter:blur(9px);
+    border:1px solid rgba(255,122,56,.35);border-radius:13px;
+    box-shadow:0 18px 40px -16px rgba(0,0,0,.7),0 0 0 1px rgba(255,83,0,.08),0 0 36px -10px var(--glow);
+    padding:13px 15px 14px}
+  .s-head{display:flex;align-items:center;gap:9px;margin-bottom:9px}
+  .live{display:inline-flex;align-items:center;gap:6px;font-family:var(--fmono);font-size:10px;letter-spacing:.14em;color:var(--orange);text-transform:uppercase}
+  .live .d{width:7px;height:7px;border-radius:50%;background:var(--orange);animation:pulseDot 1.3s infinite}
+  @keyframes pulseDot{0%{box-shadow:0 0 0 0 var(--glow)}70%{box-shadow:0 0 0 7px transparent}100%{box-shadow:0 0 0 0 transparent}}
+  .s-head .who{font-family:var(--fmono);font-size:10.5px;color:#6f8da3;margin-left:auto}
+  .s-transcript{font-family:var(--fmono);font-size:12.5px;color:#bcd4e3;min-height:2.7em;line-height:1.5;margin-bottom:10px}
+  .s-transcript .cur{color:var(--orange);animation:blink 1s steps(1) infinite}
+  @keyframes blink{50%{opacity:0}}
+  .s-row{display:flex;gap:9px;align-items:flex-start;font-size:13px;opacity:0;transform:translateY(6px);transition:.5s}
+  .s-row.in{opacity:1;transform:none}
+  .s-row+.s-row{margin-top:7px}
+  .s-ico{font-family:var(--fmono);font-size:11px;margin-top:1px;flex:none;width:18px;text-align:center}
+  .s-derive .s-ico{color:var(--mist)}
+  .s-derive{color:var(--mist-2)}
+  .s-suggest{background:rgba(255,83,0,.1);border:1px solid rgba(255,83,0,.3);border-radius:9px;padding:9px 10px;margin-top:9px!important;color:#ffe7d8}
+  .s-suggest .s-ico{color:var(--orange)}
+  .s-suggest b{color:#fff;font-weight:600}
+  .method{display:inline-block;font-family:var(--fmono);font-size:10px;letter-spacing:.04em;color:var(--orange);border:1px solid rgba(255,83,0,.35);border-radius:6px;padding:2px 7px;margin-top:7px}
+  .ghosttag{position:absolute;top:42px;right:20px;z-index:6;font-family:var(--fmono);font-size:10px;color:#6f8da3;
+    background:rgba(0,0,0,.4);border:1px dashed rgba(159,182,199,.3);padding:4px 9px;border-radius:7px}
+
+  /* ---- generic section ---- */
+  section{padding:78px 0;position:relative}
+  .sec-light{background:var(--paper);color:var(--ink)}
+  .sec-light .eyebrow{color:var(--orange)}
+  .sec-light .lead{color:#41566880}
+  .sec-h{font-size:clamp(28px,4vw,44px);max-width:18ch;margin-bottom:16px}
+  .sec-light .sec-h{color:var(--ink)}
+  .sec-intro{max-width:64ch;color:var(--mist-2);font-size:18px}
+  .sec-light .sec-intro{color:#3a4f60}
+
+  /* ---- quadrant ---- */
+  .quad-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:46px;align-items:center;margin-top:40px}
+  @media(max-width:880px){.quad-grid{grid-template-columns:1fr}}
+  .quad{position:relative;aspect-ratio:1/.92;border:1px solid var(--line-dk);border-radius:16px;background:
+    linear-gradient(180deg,#fff,#fafcfd);overflow:hidden}
+  .quad .axis-x,.quad .axis-y{position:absolute;background:var(--line-dk)}
+  .quad .axis-x{left:0;right:0;top:50%;height:1px}
+  .quad .axis-y{top:0;bottom:0;left:50%;width:1px}
+  .qlab{position:absolute;font-family:var(--fmono);font-size:11px;letter-spacing:.08em;color:#6a8198;text-transform:uppercase}
+  .qlab.t{top:10px;left:50%;transform:translateX(-50%)}
+  .qlab.b{bottom:10px;left:50%;transform:translateX(-50%)}
+  .qlab.l{left:12px;top:50%;transform:translateY(-50%) rotate(-90deg);transform-origin:left}
+  .qlab.r{right:-8px;top:50%;transform:translateY(-50%) rotate(90deg);transform-origin:right}
+  .pt{position:absolute;transform:translate(-50%,-50%);text-align:center}
+  .pt .b{width:11px;height:11px;border-radius:50%;background:#7c93a6;margin:0 auto 5px;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.15)}
+  .pt .t{font-family:var(--fmono);font-size:11px;color:#41566a;white-space:nowrap}
+  .pt.star .b{width:18px;height:18px;background:var(--orange);box-shadow:0 0 0 5px var(--glow),0 0 22px var(--orange)}
+  .pt.star .t{color:var(--orange);font-weight:600;font-size:12.5px}
+  .quad-read .gap{font-family:var(--fdisp);font-weight:700;font-size:22px;color:var(--ink);margin:0 0 10px}
+  .quad-read .gap em{color:var(--orange);font-style:normal}
+  .quad-list{list-style:none;padding:0;margin:18px 0 0;font-size:14.5px;color:#3a4f60}
+  .quad-list li{padding:9px 0;border-top:1px solid var(--line-dk);display:flex;gap:11px}
+  .quad-list b{color:var(--ink);font-family:var(--fmono);font-weight:500;font-size:13px;flex:none;width:118px}
+
+  /* ---- pipeline ---- */
+  .pipe{display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin-top:46px;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--navy-2)}
+  @media(max-width:880px){.pipe{grid-template-columns:1fr 1fr}}
+  @media(max-width:520px){.pipe{grid-template-columns:1fr}}
+  .stage{padding:24px 20px;border-right:1px solid var(--line);position:relative}
+  .stage:last-child{border-right:none}
+  .stage .n{font-family:var(--fmono);font-size:11px;color:var(--orange);letter-spacing:.1em}
+  .stage h4{font-family:var(--fdisp);font-weight:600;font-size:18px;margin:8px 0 6px}
+  .stage .desc{font-size:13.5px;color:var(--mist);line-height:1.5}
+  .stage .pick{margin-top:13px;font-family:var(--fmono);font-size:12px;color:var(--paper);background:rgba(255,83,0,.12);border:1px solid rgba(255,83,0,.3);border-radius:7px;padding:6px 9px;display:inline-block}
+  .stage .lat{margin-top:11px;font-family:var(--fmono);font-size:11px;color:#6f8da3}
+  .stage .arrow{position:absolute;right:-9px;top:50%;transform:translateY(-50%);z-index:2;color:var(--orange);font-size:16px;background:var(--navy-3);width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+  @media(max-width:880px){.stage .arrow{display:none}}
+  .flowloc{display:flex;justify-content:space-between;margin-top:14px;font-family:var(--fmono);font-size:11px;color:#5f7b91}
+  .flowloc span{display:flex;align-items:center;gap:7px}
+  .chip{width:8px;height:8px;border-radius:2px}
+  .chip.local{background:var(--mist)}
+  .chip.eu{background:var(--orange)}
+
+  /* ---- component cards ---- */
+  .cards{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;margin-top:42px}
+  @media(max-width:820px){.cards{grid-template-columns:1fr}}
+  .card{background:var(--navy-2);border:1px solid var(--line);border-radius:var(--r);padding:24px}
+  .sec-light .card{background:#fff;border-color:var(--line-dk);box-shadow:0 1px 0 rgba(8,21,31,.04)}
+  .card .lay{font-family:var(--fmono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--orange)}
+  .card h3{font-size:21px;margin:9px 0 4px}
+  .sec-light .card h3{color:var(--ink)}
+  .card .role{font-size:14px;color:var(--mist);margin-bottom:16px}
+  .sec-light .card .role{color:#56697a}
+  .pickline{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:10px;background:rgba(255,83,0,.1);border:1px solid rgba(255,83,0,.28);margin-bottom:14px}
+  .sec-light .pickline{background:rgba(255,83,0,.07)}
+  .pickline .star{color:var(--orange);font-size:13px}
+  .pickline .nm{font-family:var(--fdisp);font-weight:600;font-size:16px}
+  .sec-light .pickline .nm{color:var(--ink)}
+  .pickline .meta{margin-left:auto;font-family:var(--fmono);font-size:11px;color:var(--orange)}
+  .opts{list-style:none;margin:0;padding:0;font-size:13.5px}
+  .opts li{display:flex;gap:10px;padding:7px 0;border-top:1px dashed var(--line)}
+  .sec-light .opts li{border-color:var(--line-dk);color:#3a4f60}
+  .opts .ol{font-family:var(--fmono);font-size:12px;color:var(--paper);flex:none;width:118px}
+  .sec-light .opts .ol{color:var(--ink)}
+  .opts .od{color:var(--mist)}
+  .sec-light .opts .od{color:#56697a}
+  .note{margin-top:15px;font-size:12.5px;font-family:var(--fmono);color:#6f8da3;line-height:1.55;border-left:2px solid var(--orange);padding-left:11px}
+
+  /* ---- variants ---- */
+  .vars{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:42px}
+  @media(max-width:820px){.vars{grid-template-columns:1fr}}
+  .vcard{border:1px solid var(--line);border-radius:var(--r);padding:26px;background:var(--navy-2);position:relative}
+  .vcard.primary{border-color:rgba(255,83,0,.45);box-shadow:0 0 40px -18px var(--glow)}
+  .vbadge{position:absolute;top:-11px;left:24px;font-family:var(--fmono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;background:var(--orange);color:#1a0a00;padding:4px 10px;border-radius:6px;font-weight:600}
+  .vcard h3{font-size:22px;margin-bottom:4px}
+  .vcard .vtag{font-family:var(--fmono);font-size:12px;color:var(--orange);margin-bottom:16px;display:block}
+  .vlist{list-style:none;padding:0;margin:0;font-size:14px}
+  .vlist li{padding:8px 0;display:flex;gap:10px;border-top:1px solid var(--line);color:var(--mist-2)}
+  .vlist li .pm{font-family:var(--fmono);flex:none;font-weight:600}
+  .vlist li.pro .pm{color:#67d6a0}
+  .vlist li.con .pm{color:#ff8a6b}
+
+  /* ---- legal / anti-cluely ---- */
+  .legal{background:linear-gradient(180deg,var(--navy-3),#06121d)}
+  .law-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:46px;margin-top:42px;align-items:start}
+  @media(max-width:880px){.law-grid{grid-template-columns:1fr}}
+  .lawbox{border:1px solid rgba(255,83,0,.3);border-radius:var(--r);padding:22px;background:rgba(255,83,0,.05)}
+  .lawbox .tt{font-family:var(--fmono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--orange);margin-bottom:8px}
+  .lawbox h3{font-size:20px;margin-bottom:10px}
+  .lawbox p{font-size:14.5px;color:var(--mist-2);margin:0}
+  .lawlist{display:grid;gap:14px}
+  .lr{border:1px solid var(--line);border-radius:11px;padding:15px 17px;background:var(--navy-2)}
+  .lr .k{font-family:var(--fmono);font-size:12px;color:var(--orange);letter-spacing:.06em}
+  .lr .v{font-size:14px;color:var(--mist-2);margin-top:5px}
+  .lr .v b{color:var(--paper)}
+  .anti{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;margin-top:26px}
+  @media(max-width:620px){.anti{grid-template-columns:1fr}}
+  .anti>div{padding:20px 22px}
+  .anti .cl{background:rgba(120,30,10,.16);border-right:1px solid var(--line)}
+  .anti .so{background:rgba(255,83,0,.07)}
+  .anti .h{font-family:var(--fmono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:12px}
+  .anti .cl .h{color:#ff8a6b}
+  .anti .so .h{color:var(--orange)}
+  .anti ul{margin:0;padding-left:18px;font-size:13.5px;color:var(--mist-2)}
+  .anti li{margin-bottom:7px}
+
+  /* ---- roadmap ---- */
+  .road{display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin-top:44px;counter-reset:ph}
+  @media(max-width:820px){.road{grid-template-columns:1fr 1fr}}
+  @media(max-width:520px){.road{grid-template-columns:1fr}}
+  .ph{padding:24px 20px;border-left:2px solid var(--line);position:relative}
+  .ph::before{content:"";position:absolute;left:-7px;top:26px;width:12px;height:12px;border-radius:50%;background:var(--navy-3);border:2px solid var(--orange)}
+  .ph.p1::before{background:var(--orange)}
+  .ph .pn{font-family:var(--fmono);font-size:11px;color:var(--orange);letter-spacing:.08em}
+  .ph h4{font-family:var(--fdisp);font-weight:600;font-size:17px;margin:7px 0 8px}
+  .ph p{font-size:13.5px;color:var(--mist);margin:0}
+  .ph .tagrow{margin-top:11px;display:flex;flex-wrap:wrap;gap:5px}
+  .ph .tg{font-family:var(--fmono);font-size:10px;color:var(--mist-2);border:1px solid var(--line);border-radius:5px;padding:2px 6px}
+  .ph.p1{background:rgba(255,83,0,.06)}
+
+  /* ---- cost + close ---- */
+  .cost-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:40px}
+  @media(max-width:820px){.cost-grid{grid-template-columns:1fr}}
+  .costcard{border:1px solid var(--line-dk);border-radius:var(--r);background:#fff;padding:24px}
+  .costcard h4{font-family:var(--fdisp);font-size:17px;color:var(--ink);margin-bottom:14px}
+  .costrow{display:flex;justify-content:space-between;font-size:14px;padding:8px 0;border-top:1px solid var(--line-dk);color:#3a4f60}
+  .costrow.tot{border-top:2px solid var(--orange);font-weight:600;color:var(--ink)}
+  .costrow .mono{font-size:13px}
+  .costcard.b{background:var(--navy-2);border-color:var(--line)}
+  .costcard.b h4{color:var(--paper)}
+  .costcard.b .costrow{color:var(--mist-2);border-color:var(--line)}
+  .costcard.b .costrow.tot{color:var(--paper)}
+
+  .close{background:radial-gradient(120% 120% at 50% 0%,#073a5e,var(--navy-3) 60%);text-align:center}
+  .close h2{font-size:clamp(30px,5vw,52px);max-width:20ch;margin:0 auto 18px}
+  .close .lead{max-width:60ch;margin:0 auto 30px}
+  .recs{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;max-width:920px;margin:34px auto 0;text-align:left}
+  @media(max-width:760px){.recs{grid-template-columns:1fr}}
+  .rec{border:1px solid var(--line);border-radius:12px;padding:18px;background:rgba(255,255,255,.02)}
+  .rec .rn{font-family:var(--fmono);color:var(--orange);font-size:13px}
+  .rec p{font-size:14px;color:var(--mist-2);margin:8px 0 0}
+  .signoff{margin-top:42px;font-family:var(--fdisp);font-weight:500;font-size:18px;color:var(--paper)}
+  .signoff b{color:var(--orange)}
+  footer{padding:30px 0 50px;text-align:center;font-family:var(--fmono);font-size:12px;color:#5f7b91}
+
+  .reveal{opacity:0;transform:translateY(18px);transition:opacity .7s ease,transform .7s ease}
+  .reveal.in{opacity:1;transform:none}
+  @media(prefers-reduced-motion:reduce){
+    *{animation:none!important;transition:none!important}
+    .reveal{opacity:1;transform:none}
+    html{scroll-behavior:auto}
+  }
+  :focus-visible{outline:2px solid var(--orange);outline-offset:3px;border-radius:4px}
+</style>
+</head>
+<body>
+
+<div class="nav">
+  <div class="wrap">
+    <div class="brand"><span class="dot"></span>SOUFFLEUR</div>
+    <nav class="navlinks">
+      <a href="#gap">Marktlücke</a>
+      <a href="#how">Funktion</a>
+      <a href="#stack">Stack</a>
+      <a href="#recht">Recht</a>
+      <a href="#plan">Plan</a>
+    </nav>
+    <div class="mono" style="font-size:12px;color:var(--mist)">ZUKUNFTSBUND · Konzept v1</div>
+  </div>
+</div>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <div class="codetag"><b>Arbeitstitel</b> SOUFFLEUR · EU-souveräner Coaching-Copilot</div>
+      <h1 class="h-title">Der Coach spricht.<br>Die KI <span class="em">souffliert.</span></h1>
+      <p class="h-sub">Ein semitransparenter Layer flüstert dem Coach in Echtzeit Ableitungen und mögliche Antworten zu — auf Basis der eigenen Methodik. DSGVO-konform, ohne ein einziges US-Gramm.</p>
+      <p class="h-claim">Kein zweiter Bildschirm. Kein lokales GPU-Geraffel.<br><b>Nur das, was zählt — im richtigen Moment, am unteren Rand.</b></p>
+    </div>
+    <div>
+      <div class="call" role="img" aria-label="Mockup: Video-Call mit semitransparentem SOUFFLEUR-Overlay am unteren Rand">
+        <div class="call-bar"><i class="tl"></i><i class="tl"></i><i class="tl"></i><span>Coaching-Session · verschlüsselt</span></div>
+        <div class="ghosttag">↪ unsichtbar im Screen-Share</div>
+        <div class="tiles">
+          <div class="tile"><div class="ava a">RC</div><span class="name">Coach (du)</span></div>
+          <div class="tile client"><div class="ava b">K</div><span class="name">Klient</span><span class="speaking"></span></div>
+        </div>
+        <div class="souffleur">
+          <div class="s-head">
+            <span class="live"><span class="d"></span>Live</span>
+            <span class="who">Klient spricht</span>
+          </div>
+          <div class="s-transcript" id="trans">…<span class="cur">▍</span></div>
+          <div class="s-row s-derive" id="r1"><span class="s-ico">↳</span><span><b style="color:var(--paper)">Ableitung:</b> Nennt 3× Zeitmangel — weicht der Frage nach Priorität aus.</span></div>
+          <div class="s-row s-suggest" id="r2"><span class="s-ico">➔</span><span><b>Vorschlag:</b> „Was müsste in deiner Woche wegfallen, damit dafür Zeit wäre?"<br><span class="method">Lösungsorientiert · Skalierungsfrage</span></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="pulse"></div>
+
+<!-- GAP / MARKET -->
+<section id="gap" class="sec-light">
+  <div class="wrap">
+    <p class="eyebrow reveal">Warum jetzt</p>
+    <h2 class="sec-h reveal">Alle Bausteine existieren. Das Produkt nicht.</h2>
+    <p class="sec-intro reveal">Echtzeit-Copiloten gibt es — aber als Sales-Tools, US-Cloud, geschlossen. Coaching-Methodik, EU-Souveränität und Modularität kombiniert niemand. Genau dort steht SOUFFLEUR.</p>
+    <div class="quad-grid">
+      <div class="quad reveal">
+        <div class="axis-x"></div><div class="axis-y"></div>
+        <span class="qlab t">EU-souverän</span>
+        <span class="qlab b">US-Cloud / Closed</span>
+        <span class="qlab l">Sales</span>
+        <span class="qlab r">Coaching</span>
+        <div class="pt" style="left:24%;top:74%"><div class="b"></div><div class="t">Gong · Balto</div></div>
+        <div class="pt" style="left:50%;top:80%"><div class="b"></div><div class="t">Cluely</div></div>
+        <div class="pt" style="left:27%;top:30%"><div class="b"></div><div class="t">Jiminny (UK)</div></div>
+        <div class="pt" style="left:40%;top:20%"><div class="b"></div><div class="t">tl;dv (async)</div></div>
+        <div class="pt star" style="left:76%;top:22%"><div class="b"></div><div class="t">★ SOUFFLEUR</div></div>
+      </div>
+      <div class="quad-read reveal">
+        <p class="gap">Verteidigbares <em>Whitespace</em>: EU-souverän × Echtzeit × Coaching × modular.</p>
+        <ul class="quad-list">
+          <li><b>Sales-Copiloten</b> Gong, Balto, Salesken — richtige UX, falsche Domäne, US-Cloud, geschlossen.</li>
+          <li><b>Meeting-Tools</b> Otter, Fireflies, tl;dv — liefern erst <i>nach</i> dem Call. Kein Live-Layer.</li>
+          <li><b>Overlay-Tools</b> Cluely, Glass — richtige Form, falsche Werte. Cheating-Fokus, Datenleck mit 83.000 Nutzern.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="how">
+  <div class="wrap">
+    <p class="eyebrow reveal">Funktion</p>
+    <h2 class="sec-h reveal">Vier Schichten. Ein Event-Stream als Schnittstelle.</h2>
+    <p class="sec-intro reveal">Capture und Display sind austauschbar, die Reasoning-Schicht ist das IP. Genau diese Trennung macht SOUFFLEUR später zum einbettbaren Modul. Das LLM feuert nur bei Triggern — nicht auf jeder Silbe.</p>
+
+    <div class="pipe reveal">
+      <div class="stage">
+        <div class="n">01</div><h4>Capture</h4>
+        <div class="desc">System-Audio (Klient) + Mic (Coach) getrennt — oder Cloud-Bot für Gruppen.</div>
+        <div class="pick">lokal · Vexa (OSS)</div>
+        <div class="lat">~0 ms · 2 Quellen = Diarisation gratis</div>
+        <div class="arrow">→</div>
+      </div>
+      <div class="stage">
+        <div class="n">02</div><h4>Transkription</h4>
+        <div class="desc">Streaming-STT mit Sprecher-Trennung, deutschstark, in der EU.</div>
+        <div class="pick">Gladia 🇫🇷</div>
+        <div class="lat">~100 ms partial · ~270 ms final</div>
+        <div class="arrow">→</div>
+      </div>
+      <div class="stage">
+        <div class="n">03</div><h4>Reasoning</h4>
+        <div class="desc">Trigger-Router entscheidet <i>wann</i>. Dann Ableitung + Antwort im Stil der Methodik.</div>
+        <div class="pick">Mistral 🇫🇷 + MCP-Wissen</div>
+        <div class="lat">~0,5–1,5 s · gestreamt</div>
+        <div class="arrow">→</div>
+      </div>
+      <div class="stage">
+        <div class="n">04</div><h4>Overlay</h4>
+        <div class="desc">Semitransparente Karte, unten eingeblendet. Im Screen-Share unsichtbar.</div>
+        <div class="pick">Tauri · ~10 MB</div>
+        <div class="lat">Karte ~1–2 s nach Sprechpause</div>
+      </div>
+    </div>
+    <div class="flowloc reveal">
+      <span><i class="chip local"></i> lokal (Overlay-App — Audio-Capture ≠ Processing)</span>
+      <span><i class="chip eu"></i> EU-Cloud-APIs (DSGVO, Zero-Retention)</span>
+    </div>
+  </div>
+</section>
+
+<div class="pulse"></div>
+
+<!-- STACK / OPTIONS -->
+<section id="stack" class="sec-light">
+  <div class="wrap">
+    <p class="eyebrow reveal">Der Stack — gewählt &amp; Optionen</p>
+    <h2 class="sec-h reveal">Commodity kaufen. IP selbst bauen.</h2>
+    <p class="sec-intro reveal">STT, LLM und Capture sind ausgereift und billig — als EU-API beziehen. Selbst gebaut wird nur das Verteidigbare: Wissensschicht, Trigger-Logik, Overlay-UX.</p>
+
+    <div class="cards">
+      <!-- capture -->
+      <div class="card reveal">
+        <div class="lay">Schicht 01 · Capture</div>
+        <h3>Audio aus Teams / Meet / Zoom</h3>
+        <div class="role">Bot in der Cloud — oder lokale Doppel-Quelle im Overlay.</div>
+        <div class="pickline"><span class="star">★</span><span class="nm">Vexa</span><span class="meta">Apache 2.0 · MCP-nativ</span></div>
+        <ul class="opts">
+          <li><span class="ol">Recall.ai</span><span class="od">Goldstandard, 99,9 % SLA — aber US-Cloud, $0,50/h</span></li>
+          <li><span class="ol">Attendee.dev</span><span class="od">OSS, Pro-Speaker-PCM, mehr DevOps</span></li>
+          <li><span class="ol">lokal (Pluely-Logik)</span><span class="od">kein Bot, niedrigste Latenz, 1:1</span></li>
+        </ul>
+        <div class="note">Bot nur für Gruppen oder sichtbaren Consent nötig. 1:1 → lokale Capture, Sprecher-Trennung trivial.</div>
+      </div>
+
+      <!-- stt -->
+      <div class="card reveal">
+        <div class="lay">Schicht 02 · Speech-to-Text</div>
+        <h3>Transkription + Diarisation</h3>
+        <div class="role">Der EU-Souveränitäts-Hebel. &lt;300 ms Pflicht.</div>
+        <div class="pickline"><span class="star">★</span><span class="nm">Gladia 🇫🇷</span><span class="meta">100 % EU-Residency</span></div>
+        <ul class="opts">
+          <li><span class="ol">Speechmatics</span><span class="od">UK, on-prem/air-gapped, langsamer — Fallback</span></li>
+          <li><span class="ol">Deepgram</span><span class="od">US, sehr schnell — falsche Jurisdiktion</span></li>
+          <li><span class="ol">faster-whisper</span><span class="od">OSS, self-host — du wolltest kein lokales Processing</span></li>
+        </ul>
+        <div class="note">Gladia: Zero-Retention, kein Training auf deinen Audios (im DPA), vermarktet „Real-Time-Coaching" explizit.</div>
+      </div>
+
+      <!-- reasoning -->
+      <div class="card reveal">
+        <div class="lay">Schicht 03 · Reasoning + Wissen</div>
+        <h3>Ableitung &amp; Antwort-Vorschlag</h3>
+        <div class="role">Kein Fine-Tuning. Wissen als MCP-Kontext, nicht in Gewichten.</div>
+        <div class="pickline"><span class="star">★</span><span class="nm">Mistral 🇫🇷</span><span class="meta">Paris · DACH-stark</span></div>
+        <ul class="opts">
+          <li><span class="ol">Aleph Alpha</span><span class="od">🇩🇪 dt.-stark — ⚠ Cohere-Übernahme 04/26, prüfen</span></li>
+          <li><span class="ol">Teuken-7B</span><span class="od">voll souverän (Fraunhofer) — nicht GPT-Klasse</span></li>
+          <li><span class="ol">Routing</span><span class="od">über deine Requesty-DSGVO-Schiene</span></li>
+        </ul>
+        <div class="note">Mistral Cloud Paris = echte Souveränität. „AWS Frankfurt" = Residency ja, CLOUD-Act nein.</div>
+      </div>
+
+      <!-- overlay -->
+      <div class="card reveal">
+        <div class="lay">Schicht 04 · Overlay</div>
+        <h3>Der semitransparente Layer</h3>
+        <div class="role">Immer oben, unten eingeblendet, im Screen-Share unsichtbar.</div>
+        <div class="pickline"><span class="star">★</span><span class="nm">Tauri-Basis</span><span class="meta">Vorlage: Pluely</span></div>
+        <ul class="opts">
+          <li><span class="ol">Glass</span><span class="od">OSS — ⚠ Lizenz-Streit, genau prüfen</span></li>
+          <li><span class="ol">Open-Cluely</span><span class="od">Dual-Source-Capture-Logik übernehmen</span></li>
+          <li><span class="ol">Trick</span><span class="od">WDA_EXCLUDEFROMCAPTURE (Win) · sharingType=.none (mac)</span></li>
+        </ul>
+        <div class="note">~10 MB, &lt;100 ms Start, cross-platform. „Muss überall gehen" erfüllt — einziger lokaler Teil.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- VARIANTS -->
+<section id="vars">
+  <div class="wrap">
+    <p class="eyebrow reveal">Zwei sinnvolle Wege</p>
+    <h2 class="sec-h reveal">Eine Reasoning-Schicht, zwei Capture-Adapter.</h2>
+    <p class="sec-intro reveal">Du baust Schicht 2–4 einmal. Die Capture ist austauschbar — das ist der Modul-Trick.</p>
+    <div class="vars">
+      <div class="vcard primary reveal">
+        <span class="vbadge">Empfehlung · 1:1</span>
+        <h3>Variante A — Lokale Capture</h3>
+        <span class="vtag">Overlay greift System-Audio + Mic ab → direkt zu Gladia</span>
+        <ul class="vlist">
+          <li class="pro"><span class="pm">+</span>Niedrigste Latenz — ein Hop weniger</li>
+          <li class="pro"><span class="pm">+</span>Kein Bot, keine Bot-Kosten/-Reibung</li>
+          <li class="pro"><span class="pm">+</span>Sprecher-Trennung trivial (2 Quellen)</li>
+          <li class="con"><span class="pm">–</span>System-Audio-Capture ist OS-spezifisch (lösbar, die Klone tun's)</li>
+        </ul>
+      </div>
+      <div class="vcard reveal">
+        <h3>Variante B — Cloud-Bot</h3>
+        <span class="vtag">Vexa/Recall tritt bei → Cloud-STT → pusht ans Overlay</span>
+        <ul class="vlist">
+          <li class="pro"><span class="pm">+</span>Plattformunabhängig über Meeting-Link</li>
+          <li class="pro"><span class="pm">+</span>Saubere Pro-Teilnehmer-Diarisation (Gruppen)</li>
+          <li class="pro"><span class="pm">+</span>Sichtbarer Bot = sauberes Einwilligungs-Artefakt</li>
+          <li class="con"><span class="pm">–</span>Ein Hop mehr · Bot-Kosten · evtl. als intrusiv empfunden</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="pulse"></div>
+
+<!-- LEGAL / ANTI-CLUELY -->
+<section id="recht" class="legal">
+  <div class="wrap">
+    <p class="eyebrow reveal">Recht &amp; Haltung</p>
+    <h2 class="sec-h reveal">Kein Häkchen. Strafrecht.</h2>
+    <p class="sec-intro reveal">Der Showstopper ist nicht die Technik — es ist die Einwilligung. Sie ist gleichzeitig euer schärfstes Differenzierungsmerkmal gegen Cluely.</p>
+
+    <div class="law-grid">
+      <div class="lawlist reveal">
+        <div class="lr"><div class="k">§ 201 StGB</div><div class="v">Mitschnitt des nicht-öffentlich gesprochenen Wortes ohne Einwilligung ist eine <b>Straftat</b> (bis 3 Jahre) — nicht bloß DSGVO-Bußgeld. Einwilligung explizit, dokumentiert, <b>vor</b> Aufnahme.</div></div>
+        <div class="lr"><div class="k">DSGVO Art. 9</div><div class="v">Coaching berührt psychische Themen → <b>besondere Datenkategorie</b>. Ausdrückliche Einwilligung + DSFA (Art. 35) faktisch Pflicht.</div></div>
+        <div class="lr"><div class="k">EU AI Act Art. 5</div><div class="v">Emotionserkennung meiden — auf <b>inhaltliche</b> Ableitungen fokussieren („nennt 3× Zeitdruck"), nicht auf Emotions-Scoring. Transparenzpflicht deckt sich mit Einwilligung.</div></div>
+        <div class="lr"><div class="k">CLOUD-Act</div><div class="v">„EU-Region bei US-Anbieter" = Residency ja, Souveränität nein. Darum <b>EU-eigene</b> Anbieter (Gladia, Mistral Paris).</div></div>
+      </div>
+      <div class="reveal">
+        <div class="lawbox">
+          <div class="tt">Der Vorteil fürs Gegenüber</div>
+          <h3>Zustimmung gegen Protokoll.</h3>
+          <p>Der Klient stimmt der KI-Verarbeitung zu — und bekommt dafür ein sauberes Protokoll mit Diarisation. Fair, transparent, rechtlich zwingend. Das Overlay versteckt nur den <b style="color:var(--paper)">privaten Hinweis-Layer des Coaches</b> beim Screen-Sharing, nie die Tatsache der KI.</p>
+        </div>
+        <div class="anti">
+          <div class="cl">
+            <div class="h">✕ Cluely</div>
+            <ul>
+              <li>US-Cloud, 16 Subprozessoren</li>
+              <li>Datenleck: 83.000 Nutzer</li>
+              <li>„unsichtbar fürs Gegenüber" = Betrug</li>
+            </ul>
+          </div>
+          <div class="so">
+            <div class="h">✓ SOUFFLEUR</div>
+            <ul>
+              <li>EU-souverän, Zero-Retention</li>
+              <li>Einwilligungsbasiert &amp; transparent</li>
+              <li>Mach's doch gleich richtig</li>
+            </ul>
+          </div>
+        </div>
+        <p class="note reveal" style="margin-top:16px">Vor erstem Echtbetrieb zwingend über Carsten Lexa: Einwilligungstext · DSFA · AI-Act-Einordnung · OSS-Lizenz-Check.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ROADMAP -->
+<section id="plan" class="sec-light">
+  <div class="wrap">
+    <p class="eyebrow reveal">Bauplan</p>
+    <h2 class="sec-h reveal">Erst der sichere Wert. Dann das Schaufenster.</h2>
+    <p class="sec-intro reveal">Das Live-Overlay ist die flashy Ausbaustufe — aber rechtlich am heikelsten. Der sofort wertstiftende, einwilligungsfreundliche Teil ist das Protokoll. Deshalb diese Reihenfolge.</p>
+    <div class="road">
+      <div class="ph">
+        <div class="pn">Phase 0</div><h4>Recht &amp; Setup</h4>
+        <p>Lexa: Einwilligung, DSFA, AI-Act, Lizenzen. DPAs mit Gladia + Mistral. Paris vs. Frankfurt entscheiden.</p>
+        <div class="tagrow"><span class="tg">vor Code</span><span class="tg">DPA</span></div>
+      </div>
+      <div class="ph p1">
+        <div class="pn">Phase 1</div><h4>Async-MVP</h4>
+        <p>Protokoll + Diarisation + strukturierte Nachbereitung. Capture → Gladia → Mistral. Geringes Risiko, sofortiger Nutzen.</p>
+        <div class="tagrow"><span class="tg">kein Overlay nötig</span><span class="tg">Start hier</span></div>
+      </div>
+      <div class="ph">
+        <div class="pn">Phase 2</div><h4>Live-Overlay</h4>
+        <p>Tauri-Overlay + lokale Capture + Gladia-Streaming + Trigger-Router + Coaching-MCP. Screen-Share-unsichtbar.</p>
+        <div class="tagrow"><span class="tg">das Schaufenster</span></div>
+      </div>
+      <div class="ph">
+        <div class="pn">Phase 3</div><h4>Modul</h4>
+        <p>Schicht 2–4 als gekapseltes Modul (Event-Bus als Schnittstelle). Capture-Adapter austauschbar. ZUKUNFTSBUND-Produkt.</p>
+        <div class="tagrow"><span class="tg">einbettbar</span><span class="tg">Produkt</span></div>
+      </div>
+    </div>
+
+    <div class="cost-grid">
+      <div class="costcard reveal">
+        <h4>Laufend · Variante A (lokal)</h4>
+        <div class="costrow"><span>STT — Gladia real-time + Diarisation</span><span class="mono">~$0,75/h</span></div>
+        <div class="costrow"><span>Reasoning — Mistral (nur Trigger, gestreamt)</span><span class="mono">~$0,10–0,50/h</span></div>
+        <div class="costrow"><span>Capture — lokal</span><span class="mono">$0</span></div>
+        <div class="costrow tot"><span>Summe</span><span class="mono">~$0,85–1,25/h</span></div>
+      </div>
+      <div class="costcard b reveal">
+        <h4>Laufend · Variante B (Bot)</h4>
+        <div class="costrow"><span>STT — Gladia</span><span class="mono">~$0,75/h</span></div>
+        <div class="costrow"><span>Reasoning — Mistral</span><span class="mono">~$0,10–0,50/h</span></div>
+        <div class="costrow"><span>Capture-Bot — Vexa</span><span class="mono">~$0,30/h</span></div>
+        <div class="costrow tot"><span>Summe</span><span class="mono">~$1,15–1,55/h</span></div>
+      </div>
+    </div>
+    <p class="note reveal" style="color:#56697a;border-color:var(--orange);margin-top:18px">Trigger-Router auf kleinem/schnellem Modell, teures Modell nur für die eigentliche Antwort → Kosten drückbar (Model-Efficiency-Prinzip). Plus einmalig: Overlay + Wissensschicht + Trigger-Logik.</p>
+  </div>
+</section>
+
+<!-- CLOSE -->
+<section class="close">
+  <div class="wrap">
+    <p class="eyebrow reveal" style="color:var(--orange)">Netto-Empfehlung</p>
+    <h2 class="reveal">Bauen — aber nur das IP.</h2>
+    <p class="lead reveal">Commodity als EU-API einkaufen, das Verteidigbare selbst bauen, Recht vor Code. Der Live-Layer ist das Schaufenster; der sichere Wert ist das Protokoll. Deshalb Phase 1 zuerst.</p>
+    <div class="recs">
+      <div class="rec reveal"><div class="rn">01 · EU-Kette</div><p>Gladia (STT) + Mistral (Reasoning) + Vexa (Capture-OSS) + Tauri-Overlay. Routing über Requesty.</p></div>
+      <div class="rec reveal"><div class="rn">02 · Weg</div><p>Variante A (lokal) als Primärweg fürs 1:1, Variante B (Bot) zuschaltbar für Gruppen.</p></div>
+      <div class="rec reveal"><div class="rn">03 · Haltung</div><p>Der Anti-Cluely: transparent, EU-souverän, einwilligungsbasiert. Das ist Differenzierung <i>und</i> Absicherung.</p></div>
+    </div>
+    <p class="signoff reveal">Mach's doch <b>gleich richtig.</b></p>
+  </div>
+</section>
+
+<footer>
+  SOUFFLEUR — Konzept v1 · 01.07.2026 · ZUKUNFTSBUND GmbH · Arbeitstitel, intern · Quellen: Gladia · Mistral · Vexa · Pluely · § 201 StGB · EU AI Act
+</footer>
+
+<script>
+(function(){
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // scroll reveal
+  if('IntersectionObserver' in window && !reduce){
+    var io = new IntersectionObserver(function(es){
+      es.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target);} });
+    },{threshold:.12});
+    document.querySelectorAll('.reveal').forEach(function(el){io.observe(el);});
+  } else {
+    document.querySelectorAll('.reveal').forEach(function(el){el.classList.add('in');});
+  }
+
+  // hero transcript animation
+  var trans = document.getElementById('trans');
+  var r1 = document.getElementById('r1'), r2 = document.getElementById('r2');
+  if(reduce){
+    trans.innerHTML = '„…ehrlich gesagt komm ich seit Wochen nicht dazu, es ist einfach zu viel gerade, keine Zeit dafür…"';
+    r1.classList.add('in'); r2.classList.add('in');
+    return;
+  }
+  var full = '„…ehrlich gesagt komm ich seit Wochen nicht dazu, es ist einfach zu viel gerade, keine Zeit dafür…"';
+  function run(){
+    trans.innerHTML = '<span class="cur">▍</span>';
+    r1.classList.remove('in'); r2.classList.remove('in');
+    var i=0;
+    var typer = setInterval(function(){
+      i++;
+      trans.innerHTML = full.slice(0,i) + '<span class="cur">▍</span>';
+      if(i>=full.length){
+        clearInterval(typer);
+        setTimeout(function(){ r1.classList.add('in'); },550);
+        setTimeout(function(){ r2.classList.add('in'); },1250);
+        setTimeout(run, 6800); // loop
+      }
+    }, 34);
+  }
+  setTimeout(run, 700);
+})();
+</script>
+</body>
+</html>

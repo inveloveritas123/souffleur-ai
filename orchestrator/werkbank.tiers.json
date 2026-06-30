@@ -1,0 +1,22 @@
+{
+  "_comment": "Tier-Routing-Policy: Aufgabentyp -> Tier -> Modell. NUR Konfiguration, keine Secrets.",
+  "tiers": { "haiku": "haiku", "sonnet": "sonnet", "opus": "opus" },
+  "routing": {
+    "doku": "haiku",
+    "summary": "haiku",
+    "format": "haiku",
+    "lint": "haiku",
+    "impl": "sonnet",
+    "test": "sonnet",
+    "refactor": "sonnet",
+    "build": "sonnet",
+    "plan": "opus",
+    "architecture": "opus",
+    "review": "opus",
+    "security": "opus",
+    "privacy": "opus",
+    "judge": "opus"
+  },
+  "default": "sonnet",
+  "confirm_tier_from": "opus"
+}
