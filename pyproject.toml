@@ -15,6 +15,11 @@ exclude = [
 select = ["E", "F", "I", "B", "UP"]
 ignore = ["E501"]
 
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI-Sentinel-Marker (Welle 6, api/protocol.py) — keine mutable-default-Bugs (B008),
+# sondern das vom Framework vorgesehene Dependency-Injection-Pattern.
+extend-immutable-calls = ["fastapi.File", "fastapi.Form", "fastapi.Depends", "fastapi.Query"]
+
 [tool.mypy]
 python_version = "3.9"
 ignore_missing_imports = true
