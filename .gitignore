@@ -11,3 +11,9 @@ __pycache__/
 _bmad/
 _bmad-output/
 .claude/
+*.env
+*.env.txt
+mistral.env*
+
+# .env.example ist Vorlage (keine Secrets) und soll getrackt werden
+!.env.example

@@ -1,0 +1,36 @@
+# Root-Tooling-Config für Souffleur AI.
+# Scoped Lint/Typecheck/Coverage/Tests auf den App-Code (apps/, packages/) und
+# schließt das vendored WERKBANK-Framework + BMAD-Tool aus (kein Projekt-Code).
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+exclude = [
+  "_bmad", "_bmad-output", ".venv", "node_modules",
+  "gates", "templates", "agents", "workflows", "orchestrator",
+  "ralph", "tribunal", "deploy", "feedback", "pipeline", "branch-modules",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.9"
+ignore_missing_imports = true
+namespace_packages = true
+explicit_package_bases = true
+# vendored Framework/BMAD nicht typprüfen (kein Projekt-Code)
+exclude = "(^|/)(_bmad|_bmad-output|gates|templates|agents|workflows|orchestrator|ralph|tribunal|deploy|feedback|pipeline|branch-modules)(/|$)"
+
+[tool.coverage.run]
+source = ["apps", "packages"]
+omit = ["*/tests/*", "*/__init__.py"]
+
+[tool.coverage.report]
+fail_under = 0
+
+[tool.pytest.ini_options]
+testpaths = ["apps", "packages", "tests"]
+asyncio_mode = "auto"
+addopts = "-q"
