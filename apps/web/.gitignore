@@ -7,3 +7,9 @@ dist-ssr/
 # lokale Env-Overrides (Vorlage bleibt in .env.example am Repo-Root)
 .env
 .env.local
+
+# Playwright (Welle 9) — Reports/Artefakte/Browser-Cache, nicht committen
+playwright-report/
+test-results/
+blob-report/
+playwright/.cache/
