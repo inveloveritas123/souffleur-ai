@@ -91,7 +91,7 @@ Hilfstypen (in `ports/types.py`, gespiegelt nach `packages/shared`):
 - `BatchOptions`: diarization (bool), word_timestamps (bool), language, num_speakers_hint.
 
 Adapter-Verträge:
-- `voxtral_api` (Default): nutzt Mistral Transcribe (voxtral-mini-2602 Batch, voxtral-mini-realtime-2602 Live) über api.mistral.ai. Volle Diarisation und Wort-Zeitstempel.
+- `voxtral_api` (Default): nutzt Mistral Transcribe (voxtral-mini-2602 Batch, voxtral-mini-transcribe-realtime-2602 Live) über api.mistral.ai. Volle Diarisation und Wort-Zeitstempel.
 - `voxtral_local`: gleiche Open-Weights via MLX auf Apple Silicon; Kostenspar-Option, residency EU/lokal, Latenz nicht garantiert.
 - `gladia`: Drop-in-Fallback, EU-Endpunkt (Frankreich), nur falls Live-Latenz gemessen nicht ausreicht.
 
@@ -152,7 +152,7 @@ Alle Modelle über die EU-Basis-URL `https://api.mistral.ai`. Gepinnte Versionen
 
 | Rolle | Modell (gepinnt) | Schicht | Env-Variable |
 |---|---|---|---|
-| Live-STT (Overlay) | voxtral-mini-realtime-2602 | 2 (Phase 2) | SOUFFLEUR_MODEL_STT_LIVE |
+| Live-STT (Overlay) | voxtral-mini-transcribe-realtime-2602 | 2 (Phase 2) | SOUFFLEUR_MODEL_STT_LIVE |
 | Batch-STT + Diarisation | voxtral-mini-2602 | 2 (Phase 1) | SOUFFLEUR_MODEL_STT_BATCH |
 | Reasoning (Coaching-Antwort) | magistral-medium-2509 | 3 | SOUFFLEUR_MODEL_REASONING |
 | Trigger-Router | ministral-3b-2512 | 3 | SOUFFLEUR_MODEL_TRIGGER |
@@ -220,7 +220,7 @@ Das Tauri-Overlay (`apps/overlay`) wird nativ als macOS-App gebaut (nicht in Doc
 ## Phase-1-vs-Phase-2-Abgrenzung
 
 - **Phase 1 (Async-Protokoll-MVP):** kein Overlay, kein Live-Streaming, kein Trigger-Router. Pipeline ist Web-Upload → ConsentGate → voxtral-mini-2602 Batch (Diarisation, Wort-Zeitstempel) → magistral-medium-2509 Zusammenfassung → Protokoll-Anzeige und Export. Geringes Risiko, sofortiger Nutzen, einfache Einwilligung. Liefert dem Gegenüber das versprochene Protokoll.
-- **Phase 2 (Live-Overlay):** ergänzt Tauri-Overlay, Dual-Source-Capture, voxtral-mini-realtime-2602 Streaming, TranscriptEventBus, TriggerRouter (ministral-3b) und gestreamte Karten. Screen-share-unsichtbar. Teilt sich ConsentGate, AuditLog, LlmPort und Coaching-MCP mit Phase 1.
+- **Phase 2 (Live-Overlay):** ergänzt Tauri-Overlay, Dual-Source-Capture, voxtral-mini-transcribe-realtime-2602 Streaming, TranscriptEventBus, TriggerRouter (ministral-3b) und gestreamte Karten. Screen-share-unsichtbar. Teilt sich ConsentGate, AuditLog, LlmPort und Coaching-MCP mit Phase 1.
 - **Phase 3 (nur Ausblick, out of scope):** Schicht 2 bis 4 als Netzwerk-Modul über den Event-Bus; Cloud-Bot-Capture-Adapter (Variante B); Mehrmandantenfähigkeit (Gate E3).
 
 ## Drift-Kontrolle

@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://souffleur.ai/packages/shared/src/bus-event.schema.json",
+  "title": "BusEvent",
+  "description": "TranscriptEventBus-Nachricht (ARCHITECTURE.md Event-Bus-Schema, Welle 11). Async pub/sub pro session_id. Trägt niemals Audio-Rohdaten; Transkript-Text ist Teil des Protokoll-Flusses, nicht des Audit-Logs (Gate E2/E4 betreffen das Audit-Log, nicht den Bus).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "session_id", "tenant_id", "seq", "ts_ms", "payload", "correlation_id"],
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": [
+        "transcript.partial",
+        "transcript.final",
+        "trigger.fired",
+        "card.proposed",
+        "card.streamed",
+        "session.closed"
+      ]
+    },
+    "session_id": { "type": "string" },
+    "tenant_id": { "type": "string", "description": "Mandant (ARCHITECTURE.md Mandantentrennung, Gate E3)" },
+    "seq": { "type": "integer", "minimum": 0, "description": "monoton steigend pro Session" },
+    "ts_ms": { "type": "integer", "minimum": 0 },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "speaker": { "type": "string", "enum": ["coach", "counterpart"] },
+        "text": { "type": "string" },
+        "t_start_ms": { "type": "integer", "minimum": 0 },
+        "t_end_ms": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "correlation_id": { "type": "string" }
+  }
+}

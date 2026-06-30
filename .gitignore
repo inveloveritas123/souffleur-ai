@@ -17,3 +17,4 @@ mistral.env*
 
 # .env.example ist Vorlage (keine Secrets) und soll getrackt werden
 !.env.example
+data/
