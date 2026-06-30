@@ -1,0 +1,80 @@
+[
+  {
+    "id": "structure-grow-model",
+    "card_type": "structure_hint",
+    "title": "GROW-Modell",
+    "framework": "GROW (Sir John Whitmore)",
+    "summary": "Vier-Phasen-Struktur für ein Coaching-Gespräch: Goal (Ziel des Gesprächs/der Episode), Reality (aktuelle Situation, Fakten statt Interpretation), Options (Handlungsoptionen, bewusst ohne vorzeitige Bewertung sammeln), Will (konkrete Verbindlichkeit, was wird bis wann getan).",
+    "guidance": "Als Strukturhinweis einsetzen, wenn das Gespräch ohne klare Reihenfolge zwischen Problem, Ursachensuche und Lösung pendelt. Wichtig: Reality erst vollständig erheben, bevor zu Options übergegangen wird - vorschnelle Lösungsvorschläge vor ausreichender Bestandsaufnahme sind der häufigste GROW-Fehler. Will-Phase nicht auslassen, sonst bleibt das Gespräch folgenlos.",
+    "example_phrases": [
+      "Lassen Sie uns kurz festhalten: Was genau soll am Ende dieses Gesprächs erreicht sein? (Goal)",
+      "Bevor wir über Lösungen sprechen - wie stellt sich die Situation aktuell faktisch dar? (Reality)",
+      "Welche Optionen gibt es, auch unkonventionelle - wir bewerten erst später. (Options)",
+      "Was nehmen Sie sich davon konkret vor, und bis wann? (Will)"
+    ],
+    "trigger_keywords": ["gespräch unstrukturiert", "kein roter faden", "springt zwischen themen", "wo stehen wir"],
+    "source": "Whitmore, J.: Coaching for Performance"
+  },
+  {
+    "id": "structure-oskar-model",
+    "card_type": "structure_hint",
+    "title": "OSKAR-Modell",
+    "framework": "OSKAR (Jackson & McKergow) - lösungsfokussiertes Coaching",
+    "summary": "Lösungsfokussierte Alternative zu GROW: Outcome (gewünschtes Ergebnis), Scaling (Skalierung des aktuellen Standes und der Zuversicht), Know-how (vorhandene Ressourcen, frühere Erfolge), Affirm & Action (Anerkennung des Erreichten plus nächster Schritt), Review (Rückblick/Lernschleife im Folgegespräch).",
+    "guidance": "Bevorzugt einsetzen, wenn der Klient bereits stark problemfokussiert ist und ein zusätzlicher Ursachenanalyse-Schritt (wie in GROW Reality) das Pendeln im Problem verstärken würde. Skalierung früh im Gespräch nutzen, um sofort eine konkrete Referenz zu schaffen, statt lange in der Problembeschreibung zu verbleiben.",
+    "example_phrases": [
+      "Was wäre, ganz konkret, das gewünschte Ergebnis dieses Gesprächs? (Outcome)",
+      "Auf einer Skala von 0 bis 10 - wo stehen Sie, und wie zuversichtlich sind Sie, dass sich das verbessert? (Scaling)",
+      "Was hat in der Vergangenheit schon einmal funktioniert, das hier nützlich sein könnte? (Know-how)",
+      "Was nehmen Sie sich als Nächstes vor - und woran merken wir beim nächsten Mal, dass es sich gelohnt hat? (Affirm/Review)"
+    ],
+    "trigger_keywords": ["problemfokussiert", "dreht sich im kreis", "immer wieder dasselbe thema"],
+    "source": "Jackson, P.Z. & McKergow, M.: The Solutions Focus"
+  },
+  {
+    "id": "structure-five-phase-coaching-process",
+    "card_type": "structure_hint",
+    "title": "5-Phasen-Modell des Coachingprozesses",
+    "framework": "Klassisches Phasenmodell der Coaching-Praxis",
+    "summary": "Übergeordnete Struktur für den gesamten Coaching-Prozess (nicht nur eine Sitzung): 1) Auftragsklärung (Erwartungen, Rahmen, Rollen), 2) Zielklärung (was soll konkret erreicht werden), 3) Lösungssuche (Optionen, Perspektiven, Methodeneinsatz), 4) Maßnahmenplanung (konkrete nächste Schritte, Verbindlichkeit), 5) Abschluss/Evaluation (Reflexion, Transfer in den Alltag, Beendigung).",
+    "guidance": "Als Orientierungsraster nutzen, um zu erkennen, in welcher Prozessphase sich das aktuelle Gespräch befindet, und ob ein Themenwechsel eigentlich eine vorgelagerte Phase überspringt (z. B. Maßnahmen diskutieren, ohne dass das Ziel geklärt ist). Bei Phasensprüngen kurz zur übersprungenen Phase zurückkehren, statt in der aktuellen weiterzumachen.",
+    "example_phrases": [
+      "Bevor wir über Maßnahmen sprechen - ist für Sie das Ziel an dieser Stelle schon klar genug formuliert?",
+      "Lassen Sie uns kurz auf den Auftrag zurückkommen: passt das, worüber wir gerade sprechen, noch zum ursprünglichen Anliegen?",
+      "Was nehmen Sie aus diesem Abschnitt des Prozesses mit, bevor wir zum nächsten Thema wechseln?"
+    ],
+    "trigger_keywords": ["springt ins detail", "ziel noch unklar", "auftrag unklar", "wo im prozess stehen wir"],
+    "source": "Klassisches Phasenmodell professioneller Coaching-Praxis"
+  },
+  {
+    "id": "structure-tzi-model",
+    "card_type": "structure_hint",
+    "title": "Themenzentrierte Interaktion (TZI)",
+    "framework": "TZI (Ruth Cohn)",
+    "summary": "Balanciert vier Dimensionen eines Gesprächs: Ich (die einzelne Person mit ihren Bedürfnissen), Wir (die Beziehung/Gruppe), Es (das Thema/die Sache) und Globe (der äußere Kontext/die Rahmenbedingungen). Ein Gespräch gerät aus der Balance, wenn eine Dimension dauerhaft die anderen verdrängt.",
+    "guidance": "Als Diagnoseraster nutzen: wird gerade nur über die Sache (Es) gesprochen, während die persönliche Befindlichkeit (Ich) ausgeblendet bleibt - oder umgekehrt wird nur über Gefühle gesprochen, ohne je zur Sache zurückzukehren? Strukturhinweis ist dann, die unterrepräsentierte Dimension aktiv anzusprechen.",
+    "example_phrases": [
+      "Wir haben jetzt viel über die Sachlage gesprochen (Es) - wie geht es Ihnen persönlich dabei (Ich)?",
+      "Welche Rolle spielen die äußeren Rahmenbedingungen (Globe), die wir bisher noch nicht angesprochen haben?",
+      "Wie wirkt sich das, was Sie schildern, auf die Beziehung zu den Beteiligten aus (Wir)?"
+    ],
+    "trigger_keywords": ["nur über sachebene", "nur über gefühle", "rahmenbedingungen fehlen", "beziehungsebene fehlt"],
+    "source": "Cohn, R.: Von der Psychoanalyse zur themenzentrierten Interaktion"
+  },
+  {
+    "id": "structure-orid-model",
+    "card_type": "structure_hint",
+    "title": "ORID-Reflexionsmodell",
+    "framework": "ORID / Technology of Participation (ICA)",
+    "summary": "Vierstufiges Reflexionsraster für die Nachbereitung eines Erlebnisses oder Gesprächsabschnitts: Objective (was ist objektiv passiert/gesagt worden), Reflective (welche unmittelbare emotionale Reaktion löste das aus), Interpretive (welche Bedeutung/welcher Sinn wird daraus abgeleitet), Decisional (welche Konsequenz/Entscheidung folgt daraus).",
+    "guidance": "Besonders geeignet, um nach einem emotional aufgeladenen Bericht (Konflikt, Rückschlag) Struktur in die Reflexion zu bringen, ohne die Bedeutungsebene zu überspringen. Reihenfolge einhalten - direkt von Objective zu Decisional zu springen (\"was machen wir jetzt\") überspringt die für Sinnstiftung wichtige Interpretive-Stufe.",
+    "example_phrases": [
+      "Was genau ist rein faktisch passiert, ohne Bewertung? (Objective)",
+      "Was hat das in dem Moment bei Ihnen ausgelöst? (Reflective)",
+      "Welche Bedeutung hat dieses Erlebnis für Sie - was sagt es über die Situation aus? (Interpretive)",
+      "Was leiten Sie für Ihr weiteres Vorgehen daraus ab? (Decisional)"
+    ],
+    "trigger_keywords": ["rückschlag verarbeiten", "vorfall reflektieren", "was bedeutet das für mich", "emotional aufgeladen"],
+    "source": "Institute of Cultural Affairs (ICA) - Technology of Participation"
+  }
+]
