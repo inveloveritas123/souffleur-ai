@@ -1,0 +1,9 @@
+node_modules/
+dist/
+dist-ssr/
+*.local
+.vite/
+
+# lokale Env-Overrides (Vorlage bleibt in .env.example am Repo-Root)
+.env
+.env.local
