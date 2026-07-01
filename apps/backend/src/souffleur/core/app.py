@@ -20,8 +20,23 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
+import os
+
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+
+# CORS für lokalen Browser-/Overlay-Zugriff (Web :5173, Tauri dev). Konfigurierbar via
+# SOUFFLEUR_CORS_ORIGINS (kommagetrennt). Nur explizite Origins (kein Wildcard) — EU/Datenschutz.
+_DEFAULT_CORS_ORIGINS = (
+    "http://localhost:5173,http://127.0.0.1:5173,"
+    "http://localhost:1420,http://127.0.0.1:1420,tauri://localhost"
+)
+
+
+def _cors_origins() -> list[str]:
+    raw = os.environ.get("SOUFFLEUR_CORS_ORIGINS", _DEFAULT_CORS_ORIGINS)
+    return [o.strip() for o in raw.split(",") if o.strip()]
 
 from souffleur.adapters.llm.mistral import MistralLlmAdapter
 from souffleur.adapters.mcp.coaching_mcp_client import CoachingMcpStdioClient
@@ -163,6 +178,13 @@ def create_app(
         title="Souffleur AI Backend",
         version="0.1.0",
         lifespan=_build_lifespan(resolved_mcp_client, resolved_llm_port),
+    )
+    fastapi_app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_cors_origins(),
+        allow_credentials=False,
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
     fastapi_app.state.protocol_deps = protocol_deps
     fastapi_app.state.live_deps = live_deps
