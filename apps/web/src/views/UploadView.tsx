@@ -43,8 +43,16 @@ export function UploadView() {
       return;
     }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
+      // Bessere STT-Qualität: Mono + Rauschunterdrückung/AGC, höhere Aufnahme-Bitrate.
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          channelCount: 1,
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
+      const recorder = new MediaRecorder(stream, { audioBitsPerSecond: 128000 });
       recordedChunksRef.current = [];
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) recordedChunksRef.current.push(event.data);

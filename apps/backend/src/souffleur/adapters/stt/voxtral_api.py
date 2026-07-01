@@ -78,6 +78,13 @@ TARGET_STREAMING_DELAY_MS = 480
 
 _FALLBACK_SPEAKER = "unknown"
 
+# Deutscher Coaching-Kontext (context_bias) — verbessert die Erkennung typischer
+# Coaching-/Sales-Fachbegriffe. Überschreibbar via BatchOptions.context_bias.
+_DEFAULT_CONTEXT_BIAS_DE = (
+    "Coaching,Einwand,Budget,Zeitdruck,Skalenfrage,Wunderfrage,Ressource,"
+    "Zielvereinbarung,Reframing,GROW,systemisch,Perspektivwechsel"
+)
+
 # Explizites Timeout für den Batch-REST-Call (Gate D1/SAST B113: kein httpx-Client ohne
 # Timeout) — Diarisation langer Aufnahmen darf dauern, aber nicht unbegrenzt blockieren.
 _BATCH_HTTP_TIMEOUT_SECONDS = 60.0
@@ -310,10 +317,18 @@ class VoxtralApiTranscriptionPort:
     # --- Interna: Batch/REST ---------------------------------------------------------
 
     def _build_form_fields(self, opts: BatchOptions) -> dict[str, Any]:
-        """Baut die multipart-Formularfelder — nur verifizierte REST-Parameter (kein context_bias)."""
+        """Baut die multipart-Formularfelder — LIVE verifizierte REST-Parameter.
+
+        `context_bias` (bis 100 kommagetrennte Begriffe) ist am echten Endpunkt verifiziert
+        (HTTP 200) und verbessert die Erkennung von Coaching-Fachbegriffen. Override via
+        `BatchOptions.context_bias`; sonst greift der deutsche Coaching-Default. `language`
+        wird bewusst NICHT gesendet (führt hier zu HTTP 422)."""
         fields: dict[str, Any] = {"model": self._settings.model_stt_batch}
         if opts.diarization:
             fields["diarize"] = "true"
+        bias = opts.context_bias or _DEFAULT_CONTEXT_BIAS_DE
+        if bias:
+            fields["context_bias"] = bias
         if opts.language:
             # Verifiziert: timestamp_granularities ist NICHT kompatibel mit language.
             fields["language"] = opts.language

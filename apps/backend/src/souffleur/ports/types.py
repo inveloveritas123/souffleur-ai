@@ -101,3 +101,4 @@ class BatchOptions:
     word_timestamps: bool = True
     language: str | None = None
     num_speakers_hint: int | None = None
+    context_bias: str | None = None  # Domänen-Begriffe (kommagetrennt) zur Erkennungs-Verbesserung
