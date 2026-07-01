@@ -69,15 +69,35 @@ export function useLiveSession(): LiveSessionState & { markConnecting: () => voi
       setStatus("error");
     });
     const unlistenStatus = listen<string>(SESSION_STATUS_EVENT, (event) => {
-      if (event.payload === "closed") setStatus("closed");
+      // Ein "closed" vom Transport darf einen bereits erkannten Fehler (z.B. abgelehnte
+      // Einwilligung, siehe "error"-Fall unten) nicht überschreiben — sonst sieht der Coach
+      // nur noch "beendet" statt des eigentlichen Grunds (Finding 8).
+      if (event.payload === "closed") {
+        setStatus((prev) => (prev === "error" ? prev : "closed"));
+      }
     });
 
-    function handleBusEvent(evt: BusEvent) {
+    // Setzt den Status nur bei echten Fortschritts-Events (Transkript/Karte) auf "live" — NIE
+    // pauschal bei jeder eingehenden Nachricht, sonst überdeckt "live" kurz eine Backend-
+    // `error`-Nachricht (Finding 8: Consent-Ablehnung wurde dadurch verschluckt).
+    function markLive() {
       setStatus((prev) => (prev === "connecting" || prev === "idle" ? "live" : prev));
+    }
+
+    function handleBusEvent(evt: BusEvent) {
+      if (evt.type === "error") {
+        // Backend lehnt Handshake/Einwilligung ab (`api/live.py`: ungültiges JSON -> Close
+        // 4400, fehlende/ungültige Einwilligung -> Close 4403) und sendet vorher `detail` als
+        // für den Coach verständlichen Klartext-Grund.
+        setLastError(evt.detail);
+        setStatus("error");
+        return;
+      }
 
       switch (evt.type) {
         case "transcript.partial":
         case "transcript.final": {
+          markLive();
           if (evt.type === "transcript.final" && evt.payload.text) {
             setTranscript((prev) => {
               const next: TranscriptLine[] = [
@@ -105,6 +125,7 @@ export function useLiveSession(): LiveSessionState & { markConnecting: () => voi
           break;
         }
         case "card.streamed": {
+          markLive();
           const existing = cardsByCorrelation.current.get(evt.correlation_id);
           const delta = evt.payload.text ?? "";
           if (existing) {
@@ -127,6 +148,7 @@ export function useLiveSession(): LiveSessionState & { markConnecting: () => voi
           break;
         }
         case "card.proposed": {
+          markLive();
           const existing = cardsByCorrelation.current.get(evt.correlation_id);
           const fullText = evt.payload.text ?? existing?.text ?? "";
           const updated: CoachingCardState = {

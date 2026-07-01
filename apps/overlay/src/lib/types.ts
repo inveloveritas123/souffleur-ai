@@ -26,7 +26,11 @@ export interface BusEventPayload {
   t_end_ms?: number;
 }
 
-export interface BusEvent {
+/**
+ * Reguläres Bus-Event, 1:1 vom Backend über den Bus weitergereicht
+ * (`api/live.py::_bus_event_to_json`).
+ */
+export interface RegularBusEvent {
   type: BusEventType;
   session_id: string;
   tenant_id: string;
@@ -35,6 +39,21 @@ export interface BusEvent {
   payload: BusEventPayload;
   correlation_id: string;
 }
+
+/**
+ * Fehler-Nachricht des Backends bei ungültigem Handshake/fehlender Einwilligung
+ * (`api/live.py`, `{"type":"error","detail":"..."}` vor `websocket.close(code=4400|4403)`).
+ * Kein echtes Bus-Event — hat absichtlich KEINE `session_id`/`payload`/`correlation_id`, das
+ * Backend sendet nur `type` + `detail`. Der Rust-Client (`src-tauri/src/network/mod.rs`)
+ * reicht diese Nachricht unverändert über denselben `souffleur://bus-event`-Kanal weiter,
+ * darum ist sie hier Teil der Union statt eines eigenen Tauri-Events.
+ */
+export interface ErrorBusEvent {
+  type: "error";
+  detail: string;
+}
+
+export type BusEvent = RegularBusEvent | ErrorBusEvent;
 
 export type ConnectionStatus = "idle" | "connecting" | "live" | "closed" | "error";
 
