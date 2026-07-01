@@ -1,4 +1,4 @@
-# GATE-REPORT — target=`.` — 2026-07-01T01:33:38Z
+# GATE-REPORT — target=`.` — 2026-07-01T15:11:24Z
 
 ## Zusammenfassung
 - **Ergebnis:** GRUEN
@@ -84,10 +84,10 @@ at /Users/roberthargesheimer/Documents/Claude/Projects/Souffleur…at /Users/rob
     - `apps/backend/src/souffleur/adapters/llm/mistral.py:58` [n+1-query] *********
     - `apps/backend/src/souffleur/adapters/stt/voxtral_api.py:169` [n+1-query] ***********
     - `apps/backend/src/souffleur/adapters/stt/voxtral_api.py:171` [n+1-query] ***********
-    - `apps/backend/src/souffleur/adapters/stt/voxtral_api.py:334` [n+1-query] ***************
-    - `apps/backend/src/souffleur/adapters/stt/voxtral_api.py:339` [n+1-query] ***************
-    - `apps/backend/src/souffleur/adapters/stt/voxtral_api.py:340` [n+1-query] ***************
+    - `apps/backend/src/souffleur/adapters/stt/voxtral_api.py:336` [n+1-query] ***************
     - `apps/backend/src/souffleur/adapters/stt/voxtral_api.py:341` [n+1-query] ***************
+    - `apps/backend/src/souffleur/adapters/stt/voxtral_api.py:342` [n+1-query] ***************
+    - `apps/backend/src/souffleur/adapters/stt/voxtral_api.py:343` [n+1-query] ***************
     - `apps/backend/src/souffleur/adapters/stt/gladia.py:231` [n+1-query] ****************
     - `apps/backend/src/souffleur/adapters/stt/gladia.py:234` [n+1-query] ********
     - `apps/backend/src/souffleur/adapters/stt/gladia.py:240` [n+1-query] ********

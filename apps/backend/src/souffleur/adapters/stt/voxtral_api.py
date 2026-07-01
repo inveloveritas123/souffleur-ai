@@ -238,7 +238,9 @@ class VoxtralApiTranscriptionPort:
         return ProviderCapabilities(
             supports_streaming=True,
             supports_diarization=True,
-            supports_word_timestamps=True,
+            # LIVE verifiziert: voxtral-mini-2602 liefert für Batch nur Segment-Ebene,
+            # keine Wort-Zeitstempel (timestamp_granularities[]=word -> HTTP 422).
+            supports_word_timestamps=False,
             typical_final_latency_ms=300,
             residency="EU",
         )
@@ -316,10 +318,10 @@ class VoxtralApiTranscriptionPort:
             # Verifiziert: timestamp_granularities ist NICHT kompatibel mit language.
             fields["language"] = opts.language
         else:
-            granularities = ["segment"]
-            if opts.word_timestamps:
-                granularities.append("word")
-            fields["timestamp_granularities[]"] = granularities
+            # LIVE verifiziert (2026-07): der Endpunkt akzeptiert für voxtral-mini-2602 nur
+            # timestamp_granularities[]=segment. "word" -> HTTP 422. Daher KEINE Wort-Ebene
+            # anfragen (word_timestamps wird bewusst ignoriert; capabilities meldet dies ehrlich).
+            fields["timestamp_granularities[]"] = ["segment"]
         return fields
 
     def _parse_rest_response(self, payload: dict[str, Any]) -> TranscriptResult:
@@ -360,9 +362,12 @@ class VoxtralApiTranscriptionPort:
     def _extract_speaker_label(segment: dict[str, Any]) -> str:
         """Sprecher-Label aus dem verifizierten `speaker_id`-Feld (int|None) — kein Fake-Sprecher."""
         speaker_id = segment.get("speaker_id")
-        if speaker_id is None:
+        if speaker_id is None or speaker_id == "":
             return _FALLBACK_SPEAKER
-        return f"speaker_{speaker_id}"
+        # LIVE verifiziert: der Endpunkt liefert speaker_id teils als String "speaker_1"
+        # (nicht nur int). Kein Doppel-Präfix erzeugen.
+        text = str(speaker_id)
+        return text if text.startswith("speaker") else f"speaker_{text}"
 
     @classmethod
     def _extract_words(cls, raw_words: list[dict[str, Any]] | None) -> list[Word] | None:

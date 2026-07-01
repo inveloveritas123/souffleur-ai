@@ -197,7 +197,8 @@ class CapabilitiesTest(unittest.TestCase):
         capabilities = port.capabilities()
         self.assertTrue(capabilities.supports_streaming)
         self.assertTrue(capabilities.supports_diarization)
-        self.assertTrue(capabilities.supports_word_timestamps)
+        # LIVE verifiziert: Batch liefert nur Segment-Ebene (word -> HTTP 422)
+        self.assertFalse(capabilities.supports_word_timestamps)
         self.assertEqual(capabilities.residency, "EU")
 
 

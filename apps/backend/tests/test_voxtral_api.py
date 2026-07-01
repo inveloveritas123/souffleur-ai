@@ -144,7 +144,8 @@ def test_transcribe_batch_posts_diarize_true_via_rest(tmp_path: Any) -> None:
     assert kwargs["headers"]["Authorization"] == "Bearer test-key"
     assert kwargs["data"]["model"] == "voxtral-mini-2602"
     assert kwargs["data"]["diarize"] == "true"
-    assert kwargs["data"]["timestamp_granularities[]"] == ["segment", "word"]
+    # LIVE verifiziert: Endpunkt akzeptiert nur "segment" (word -> HTTP 422)
+    assert kwargs["data"]["timestamp_granularities[]"] == ["segment"]
     assert kwargs["files"]["file"][0] == "gespraech.wav"
     assert kwargs["files"]["file"][1] == b"fake-bytes"
 
@@ -245,7 +246,8 @@ def test_capabilities_reports_eu_residency_and_diarization_support() -> None:
 
     assert caps.residency == "EU"
     assert caps.supports_diarization is True
-    assert caps.supports_word_timestamps is True
+    # LIVE verifiziert: Batch liefert nur Segment-Ebene, keine Wort-Zeitstempel
+    assert caps.supports_word_timestamps is False
 
 
 def test_client_defaults_to_eu_base_url_from_settings() -> None:
