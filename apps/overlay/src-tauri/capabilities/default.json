@@ -1,0 +1,15 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Souffleur AI Overlay — Basis-Capability für das einzige Fenster (Karten-Anzeige). Kein Dateisystem-, Shell- oder Netzwerk-Zugriff aus dem Frontend heraus (WS/Capture laufen ausschließlich im Rust-Backend, siehe src-tauri/src/network + src-tauri/src/capture).",
+  "windows": ["overlay"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-show",
+    "core:window:allow-hide",
+    "core:window:allow-set-position",
+    "core:window:allow-set-size",
+    "core:window:allow-set-always-on-top",
+    "core:event:default"
+  ]
+}
