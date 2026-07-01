@@ -1,0 +1,113 @@
+# docker/docker-compose.yml — Souffleur AI Container-Topologie (Welle 10)
+#
+# Dienste: backend (8000), coaching-mcp (8080), web (5173); optional voxtral-worker
+# (Profil `local-stt`, standardmäßig NICHT gestartet). Default-STT-Pfad ist Cloud
+# (SOUFFLEUR_STT_PROVIDER=voxtral_api gegen https://api.mistral.ai, EU/Paris).
+#
+# Keine Secrets im Image oder in dieser Datei: MISTRAL_API_KEY/GLADIA_API_KEY kommen
+# ausschließlich über eine externe Env-Datei (`env_file:`, Default
+# `$HOME/.config/souffleur/souffleur.env`, optional/`required: false` — fehlt sie,
+# startet der Service trotzdem, nur ohne die darin enthaltenen Werte). Kein echter
+# Schlüssel steht in dieser Datei oder in einem Image.
+#
+# Bewusst KEIN `environment: - MISTRAL_API_KEY`-Passthrough-Eintrag zusätzlich zum
+# `env_file`: lokal verifiziert (`docker compose run --rm ... env`), dass Compose eine
+# unbelegte Variable in `environment:` bedingungslos Vorrang vor `env_file:` bekommt —
+# ist die Variable in der aufrufenden Shell NICHT gesetzt, LÖSCHT der bloße Name den
+# Wert aus der Env-Datei ersatzlos (kein Fallback), statt ihn unangetastet zu lassen.
+# Für einen reinen Host-Env-Betrieb ohne Datei: Wert in eine (ggf. temporäre) Datei
+# schreiben und über `SOUFFLEUR_ENV_FILE` referenzieren, statt hier einen Passthrough
+# zu deklarieren — sonst droht genau dieser stille Secret-Verlust.
+#
+# EU-Routing (Gate E1): alle Basis-URLs unten sind EU-Endpunkte (api.mistral.ai/Paris,
+# api.gladia.io/Frankreich) — kein Non-EU-Endpunkt/Region wird hier referenziert.
+#
+# apps/overlay (Tauri) ist absichtlich NICHT enthalten — natives macOS-Screen-Capture/
+# NSWindow-Verhalten kann nicht containerisiert werden (siehe ARCHITECTURE.md).
+#
+# MLX/voxtral_local (Apple-Silicon-only): läuft NICHT in einem Linux-Container, auch
+# nicht unter OrbStack auf einem Apple-Silicon-Host (Linux-VM, kein direkter
+# Metal-Zugriff). Für diesen Pfad muss das Backend host-seitig (außerhalb Docker)
+# gestartet werden, siehe docker/voxtral-worker.Dockerfile und docker/README.md.
+
+services:
+  backend:
+    build:
+      context: ../apps/backend
+      dockerfile: Dockerfile
+    image: souffleur-backend:local
+    ports:
+      - "${SOUFFLEUR_BACKEND_PORT:-8000}:8000"
+    env_file:
+      - path: ${SOUFFLEUR_ENV_FILE:-$HOME/.config/souffleur/souffleur.env}
+        required: false
+    environment:
+      # MISTRAL_API_KEY/GLADIA_API_KEY kommen NUR aus env_file (siehe Kommentar oben) —
+      # kein Passthrough-Eintrag hier, um den Secret-Clobbering-Bug zu vermeiden.
+      # Reine Config-Referenzen, alle Defaults EU/gepinnt (Gate E1/F1).
+      - MISTRAL_BASE_URL=${MISTRAL_BASE_URL:-https://api.mistral.ai}
+      - SOUFFLEUR_STT_PROVIDER=${SOUFFLEUR_STT_PROVIDER:-voxtral_api}
+      - SOUFFLEUR_MODEL_STT_LIVE=${SOUFFLEUR_MODEL_STT_LIVE:-voxtral-mini-transcribe-realtime-2602}
+      - SOUFFLEUR_MODEL_STT_BATCH=${SOUFFLEUR_MODEL_STT_BATCH:-voxtral-mini-2602}
+      - SOUFFLEUR_MODEL_REASONING=${SOUFFLEUR_MODEL_REASONING:-magistral-medium-2509}
+      - SOUFFLEUR_MODEL_TRIGGER=${SOUFFLEUR_MODEL_TRIGGER:-ministral-3b-2512}
+      - GLADIA_BASE_URL=${GLADIA_BASE_URL:-https://api.gladia.io}
+      - SOUFFLEUR_VOXTRAL_LOCAL_URL=${SOUFFLEUR_VOXTRAL_LOCAL_URL:-http://voxtral-worker:9000}
+      - SOUFFLEUR_MCP_URL=${SOUFFLEUR_MCP_URL:-http://coaching-mcp:8080}
+      - SOUFFLEUR_TENANT_ID=${SOUFFLEUR_TENANT_ID:-zukunftsbund}
+      - SOUFFLEUR_AUDIT_LOG_PATH=${SOUFFLEUR_AUDIT_LOG_PATH:-/app/data/audit-log.jsonl}
+      - SOUFFLEUR_RETENTION_DAYS=${SOUFFLEUR_RETENTION_DAYS:-30}
+      - SOUFFLEUR_REQUIRE_CONSENT=${SOUFFLEUR_REQUIRE_CONSENT:-true}
+    volumes:
+      # Audit-Log/Protokoll-Daten persistent, aber außerhalb des Images (kein PII im Image).
+      - ../data:/app/data
+    depends_on:
+      coaching-mcp:
+        condition: service_healthy
+    networks:
+      - souffleur
+
+  coaching-mcp:
+    build:
+      context: ../packages/coaching-mcp
+      dockerfile: Dockerfile
+    image: souffleur-coaching-mcp:local
+    ports:
+      - "${SOUFFLEUR_MCP_PORT:-8080}:8080"
+    networks:
+      - souffleur
+
+  web:
+    build:
+      context: ../apps/web
+      dockerfile: Dockerfile
+      args:
+        VITE_SOUFFLEUR_API_BASE: ${VITE_SOUFFLEUR_API_BASE:-http://localhost:8000}
+    image: souffleur-web:local
+    ports:
+      - "${SOUFFLEUR_WEB_PORT:-5173}:5173"
+    depends_on:
+      - backend
+    networks:
+      - souffleur
+
+  # Optional, Profil `local-stt` — nicht Teil des Default-Starts (`docker compose up`
+  # ohne --profile startet diesen Service NICHT). Nur relevant, wenn
+  # SOUFFLEUR_STT_PROVIDER=voxtral_local gewählt wird. Siehe Kommentar oben zu MLX: dieser
+  # Container nutzt KEIN MLX (Platzhalter für einen künftigen CPU-faster-whisper-Worker,
+  # siehe docker/voxtral-worker.Dockerfile). Der echte MLX-Pfad läuft host-seitig.
+  voxtral-worker:
+    build:
+      context: .
+      dockerfile: voxtral-worker.Dockerfile
+    image: souffleur-voxtral-worker:local
+    profiles:
+      - local-stt
+    ports:
+      - "9000:9000"
+    networks:
+      - souffleur
+
+networks:
+  souffleur:
+    name: souffleur-ai

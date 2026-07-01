@@ -1,0 +1,49 @@
+# Root-Tooling-Config für Souffleur AI.
+# Scoped Lint/Typecheck/Coverage/Tests auf den App-Code (apps/, packages/) und
+# schließt das vendored WERKBANK-Framework + BMAD-Tool aus (kein Projekt-Code).
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+exclude = [
+  "_bmad", "_bmad-output", ".venv", "node_modules",
+  "gates", "templates", "agents", "workflows", "orchestrator",
+  "ralph", "tribunal", "deploy", "feedback", "pipeline", "branch-modules",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["E501"]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI-Sentinel-Marker (Welle 6, api/protocol.py) — keine mutable-default-Bugs (B008),
+# sondern das vom Framework vorgesehene Dependency-Injection-Pattern.
+extend-immutable-calls = ["fastapi.File", "fastapi.Form", "fastapi.Depends", "fastapi.Query"]
+
+[tool.mypy]
+python_version = "3.9"
+ignore_missing_imports = true
+namespace_packages = true
+explicit_package_bases = true
+# vendored Framework/BMAD nicht typprüfen (kein Projekt-Code)
+exclude = "(^|/)(_bmad|_bmad-output|gates|templates|agents|workflows|orchestrator|ralph|tribunal|deploy|feedback|pipeline|branch-modules)(/|$)"
+
+[tool.coverage.run]
+# Gate C2 (`gates/checks/c2_coverage.py`) führt `coverage run -m unittest discover
+# -s tests -p "test_*.py"` aus — die dabei gemessene Menge muss der Backend-
+# Produkt-KERN sein (Welle 17-Entscheid): `apps/web` ist eine TypeScript/React-App
+# (nicht python-coverbar), `apps/overlay` ist eine Tauri/Rust-App (nicht python-
+# coverbar), `packages/coaching-mcp` hat seine eigene, bereits grüne pytest-Suite
+# (32 Tests) und wird nicht zusätzlich von diesem Gate verlangt. `source` ist daher
+# bewusst auf den Python-Backend-Kern verengt — sonst würde C2 einen Prozentsatz
+# über eine Menge berichten, die zu 90% nie python-testbar ist (Goodharting).
+source = ["apps/backend/src/souffleur"]
+omit = ["*/tests/*", "*/__init__.py"]
+
+[tool.coverage.report]
+fail_under = 0
+
+[tool.pytest.ini_options]
+testpaths = ["apps", "packages", "tests"]
+asyncio_mode = "auto"
+addopts = "-q"

@@ -1,0 +1,108 @@
+[
+  {
+    "id": "deepening-circular-question",
+    "card_type": "deepening_question",
+    "title": "Zirkuläre Frage",
+    "framework": "Mailänder systemische Familientherapie (Selvini Palazzoli, Boscolo, Cecchin)",
+    "summary": "Fragt nicht nach der eigenen Sicht des Klienten, sondern danach, wie eine dritte Person (real oder hypothetisch) die Situation, eine Beziehung oder ein Verhalten vermutlich beschreiben würde. Macht Beziehungsmuster und blinde Flecken sichtbar, die aus der Ich-Perspektive verdeckt bleiben.",
+    "guidance": "Einsetzen, wenn der Klient in der eigenen Sicht festgefahren wirkt oder ein Konflikt mit einer zweiten Person geschildert wird. Immer eine konkrete, benannte Person als Beobachter-Perspektive wählen, keine abstrakte Allgemeinheit. Nach der Antwort die Differenz zur eigenen Selbstsicht explizit ansprechen.",
+    "example_phrases": [
+      "Wenn man Ihre Kollegin fragen würde, wie sie Ihr Verhalten in dieser Situation beschreiben würde - was würde sie vermutlich sagen?",
+      "Was würde Ihr engster Vertrauter dazu sagen, wie es Ihnen mit dieser Entscheidung wirklich geht?",
+      "Angenommen, ein außenstehender Beobachter würde dem Streit eine Woche lang zusehen - was würde ihm an dem Muster zwischen Ihnen beiden auffallen?"
+    ],
+    "trigger_keywords": ["beziehung", "konflikt mit", "die anderen sehen das", "wie sieht mein team das", "perspektive"],
+    "source": "Selvini Palazzoli, M., Boscolo, L., Cecchin, G., Prata, G.: Paradoxon und Gegenparadoxon"
+  },
+  {
+    "id": "deepening-scaling-question",
+    "card_type": "deepening_question",
+    "title": "Skalierungsfrage",
+    "framework": "Lösungsfokussierte Kurzzeittherapie (de Shazer, Kim Berg)",
+    "summary": "Bittet den Klienten, einen Zustand (Zufriedenheit, Fortschritt, Zuversicht, Wichtigkeit) auf einer Skala von 0 bis 10 einzuordnen. Macht Vages konkret, schafft eine gemeinsame Referenz und öffnet sofort eine Anschlussfrage zum nächsten kleinen Schritt.",
+    "guidance": "Immer mit einer offenen Anschlussfrage kombinieren - die Zahl allein liefert noch keinen Coaching-Wert. Zwei Standard-Anschlüsse: (a) Was genau hat dazu geführt, dass es schon eine X und nicht eine 0 ist? (würdigt vorhandene Ressourcen). (b) Was wäre konkret anders bei X+1? (macht den nächsten Schritt greifbar, statt gleich auf die 10 zu zielen).",
+    "example_phrases": [
+      "Auf einer Skala von 0 bis 10, wo 10 für vollständig gelöst steht - wo stehen Sie heute?",
+      "Was genau läuft schon gut, dass es eine 6 und keine 2 ist?",
+      "Was wäre anders, wenn Sie bei einer 7 stünden statt bei einer 6 - was wäre der kleinste sichtbare Unterschied?"
+    ],
+    "trigger_keywords": ["wie zufrieden", "wie sicher sind sie", "wie weit sind sie", "fortschritt einschätzen"],
+    "source": "de Shazer, S. & Kim Berg, I.: Lösungsfokussierte Kurzzeittherapie - Skalierungstechnik"
+  },
+  {
+    "id": "deepening-miracle-question",
+    "card_type": "deepening_question",
+    "title": "Wunderfrage",
+    "framework": "Lösungsfokussierte Kurzzeittherapie (Steve de Shazer)",
+    "summary": "Lädt den Klienten ein, sich einen Zustand vorzustellen, in dem das Problem über Nacht durch ein Wunder gelöst wäre - und woran er das beim Aufwachen als Erstes merken würde. Löst den Blick vom Problem und richtet ihn konkret auf das gewünschte Zielbild, ohne den Weg dorthin vorwegzunehmen.",
+    "guidance": "Die Vorstellung bewusst langsam und sinnlich konkretisieren lassen (was sehen, hören, tun Sie als Erstes), statt schnell zur Maßnahme zu springen. Erst danach prüfen, welche Elemente des Wunderbilds bereits - auch nur ansatzweise - heute schon vorhanden sind. Nicht einsetzen, wenn der Klient akut überfordert ist - dann eher Skalierungsfrage zuerst.",
+    "example_phrases": [
+      "Stellen Sie sich vor, heute Nacht passiert ein Wunder und das Problem ist gelöst, während Sie schlafen - woran würden Sie das morgens als Erstes merken?",
+      "Was würde Ihr Umfeld an Ihnen anders bemerken, ohne dass Sie ihm vom Wunder erzählt haben?",
+      "Welches kleine Stück von diesem Wunderbild gibt es - auch nur ansatzweise - schon heute?"
+    ],
+    "trigger_keywords": ["wenn alles gelöst wäre", "idealzustand", "wunsch zielbild", "traumsituation"],
+    "source": "de Shazer, S.: Keys to Solution in Brief Therapy"
+  },
+  {
+    "id": "deepening-hypothetical-question",
+    "card_type": "deepening_question",
+    "title": "Hypothetische / Als-ob-Frage",
+    "framework": "Systemisches Coaching",
+    "summary": "Versetzt den Klienten in ein angenommenes Szenario (\"Angenommen, Sie hätten bereits entschieden...\"), um Denkblockaden zu umgehen, die durch reale Festlegung entstehen. Senkt das Risiko des Aussprechens, weil es sich offiziell nur um ein Gedankenspiel handelt.",
+    "guidance": "Besonders wirksam bei Entscheidungsblockaden oder wenn der Klient zwischen zwei Optionen pendelt. Das \"Als ob\" konsequent durchhalten, auch wenn der Klient versucht, ins Reale zurückzukehren (\"aber das geht ja gar nicht\") - dann nachfragen, was genau dagegenspricht, statt das Szenario sofort fallen zu lassen.",
+    "example_phrases": [
+      "Angenommen, Sie hätten sich bereits für Option A entschieden - wie würde sich das im ersten Moment anfühlen?",
+      "Tun wir einfach mal so, als wäre die Hürde X kein Thema mehr - was wäre dann Ihr nächster Schritt?",
+      "Wenn Sie schon morgen in der neuen Situation wären - was würden Sie als Erstes anders machen?"
+    ],
+    "trigger_keywords": ["unentschlossen", "zwischen zwei optionen", "weiß nicht was ich will", "entscheidung schwer"],
+    "source": "Systemisches Coaching - hypothetisches Fragen"
+  },
+  {
+    "id": "deepening-resource-question",
+    "card_type": "deepening_question",
+    "title": "Ressourcenfrage",
+    "framework": "Ressourcenorientiertes Coaching",
+    "summary": "Lenkt den Fokus bewusst von der Problembeschreibung auf bereits vorhandene Fähigkeiten, Erfolge oder Unterstützung. Wirkt der Tendenz entgegen, sich ausschließlich über Defizite zu definieren, und liefert Bausteine für die Lösung.",
+    "guidance": "Erst einsetzen, nachdem das Problem ausreichend gewürdigt wurde - zu frühes Umlenken wirkt sonst wie Verharmlosung. Konkrete, episodische Erinnerungen erfragen (eine bestimmte Situation), keine abstrakten Eigenschaften (\"Sie sind ja eigentlich stark\").",
+    "example_phrases": [
+      "Woran haben Sie in einer ähnlich schwierigen Situation früher schon einmal gemerkt, dass Sie damit umgehen können?",
+      "Wer oder was unterstützt Sie aktuell schon, auch wenn es noch nicht reicht?",
+      "Welche Ihrer Stärken kommt Ihnen gerade gar nicht in den Sinn, obwohl sie eigentlich hilfreich wäre?"
+    ],
+    "trigger_keywords": ["fühle mich überfordert", "schaffe das nicht", "habe keine ahnung wie", "bin ratlos"],
+    "source": "Ressourcenorientiertes Coaching, Erickson'sche Tradition"
+  },
+  {
+    "id": "deepening-worsening-question",
+    "card_type": "deepening_question",
+    "title": "Verschlimmerungsfrage (paradoxe Intervention)",
+    "framework": "Systemisches Coaching / paradoxe Intervention",
+    "summary": "Fragt, was der Klient konkret tun müsste, um die Situation absichtlich zu verschlechtern. Macht durch den Kontrast sichtbar, welche eigenen Verhaltensweisen das Problem aktuell - meist unbewusst - aufrechterhalten.",
+    "guidance": "Mit leichtem, nicht zynischem Ton einsetzen, sonst wirkt es respektlos gegenüber dem Leidensdruck. Besonders nützlich, wenn direkte Lösungsfragen ins Leere laufen, weil der Klient blockiert ist. Nach der Antwort prüfen: welche der genannten \"Verschlimmerungs\"-Verhaltensweisen finden faktisch bereits statt?",
+    "example_phrases": [
+      "Was müssten Sie konkret tun, damit die Situation garantiert noch schlimmer wird?",
+      "Wie könnten Sie es schaffen, dass das Problem nächste Woche noch größer ist als heute?",
+      "Welche der gerade genannten Verhaltensweisen kommt Ihnen davon eigentlich schon bekannt vor?"
+    ],
+    "trigger_keywords": ["festgefahren", "keine idee mehr", "komme nicht weiter", "stuck"],
+    "source": "Systemische Therapie - paradoxe Intervention (Watzlawick u.a.)"
+  },
+  {
+    "id": "deepening-grow-questions",
+    "card_type": "deepening_question",
+    "title": "GROW-Fragenkatalog",
+    "framework": "GROW-Modell (Sir John Whitmore)",
+    "summary": "Strukturierter Fragenkatalog entlang der vier GROW-Phasen (Goal, Reality, Options, Will), nutzbar als Einzel-Vertiefungsfragen innerhalb eines laufenden Gesprächs, wenn eine der vier Dimensionen noch unklar ist.",
+    "guidance": "Diagnostizieren, in welcher GROW-Phase der Klient gerade unscharf bleibt, und gezielt dort mit einer Frage aus dem Katalog vertiefen, statt das ganze Modell mechanisch abzuarbeiten. Reality-Fragen vor Options-Fragen stellen - Lösungen vor ausreichender Bestandsaufnahme führen oft zu vorschnellen Maßnahmen.",
+    "example_phrases": [
+      "Goal: Woran würden Sie in drei Monaten konkret merken, dass Sie Ihr Ziel erreicht haben?",
+      "Reality: Was haben Sie bisher schon unternommen, um dort hinzukommen?",
+      "Options: Welche Möglichkeiten sehen Sie, auch wenn manche davon im ersten Moment unrealistisch wirken?",
+      "Will: Was genau nehmen Sie sich bis zum nächsten Gespräch konkret vor?"
+    ],
+    "trigger_keywords": ["ziel unklar", "was sind meine optionen", "nächster schritt", "wie weiter"],
+    "source": "Whitmore, J.: Coaching for Performance"
+  }
+]

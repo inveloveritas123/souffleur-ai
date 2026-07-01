@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Souffleur AI — Overlay (Tauri v2, macOS).
+
+  Der Tauri-macOS-Bundler mischt diese Datei additiv in das generierte Info.plist im
+  App-Bundle (Konvention: eine Info.plist im src-tauri/-Verzeichnis wird automatisch
+  übernommen, kein zusätzlicher Config-Eintrag nötig).
+
+  Beide Berechtigungen werden zur LAUFZEIT vom Betriebssystem abgefragt (macOS zeigt beim
+  ersten Zugriff einen System-Dialog) — sie sind zum Build-Zeitpunkt NICHT grantbar und
+  müssen vom Nutzer manuell erteilt werden (siehe README.md "Permission-Setup"):
+
+  - NSMicrophoneUsageDescription: für die Mikrofon-Erfassung (Kanal 0 / Coach, cpal,
+    voll funktionsfähig implementiert in src/capture/mic.rs).
+  - NSScreenCaptureUsageDescription: für die System-Audio-Erfassung (Kanal 1 / Gegenüber)
+    via ScreenCaptureKit/CoreAudio-Tap. Diese Quelle ist in src/capture/system_audio.rs
+    als dokumentiertes Stub-Modul angelegt (siehe Doku dort) — die Permission wird hier
+    bereits deklariert, damit ein künftiges Voll-Implementieren ohne Info.plist-Änderung
+    auskommt, und damit macOS bei jedem versuchten ScreenCaptureKit-Zugriff (auch aus
+    Testcode) den korrekten System-Dialog zeigt statt eines stillen Absturzes.
+-->
+<plist version="1.0">
+<dict>
+  <key>NSMicrophoneUsageDescription</key>
+  <string>Souffleur AI erfasst dein Mikrofon (Coach-Kanal), um Live-Coaching-Karten während des Gesprächs zu erzeugen — ausschließlich nach dokumentierter Einwilligung.</string>
+  <key>NSScreenCaptureUsageDescription</key>
+  <string>Souffleur AI erfasst System-Audio (Gegenüber-Kanal) über die Bildschirmaufnahme-Berechtigung, um beide Sprecher getrennt zu transkribieren — ausschließlich nach dokumentierter Einwilligung. Es wird kein Bildschirminhalt aufgezeichnet, nur Audio.</string>
+</dict>
+</plist>

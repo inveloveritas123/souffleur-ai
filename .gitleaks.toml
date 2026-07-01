@@ -1,0 +1,7 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Frontend localStorage-Namespace-Konstanten (keine Secrets) — Pfad+Regex auf die Zeile"
+regexTarget = "line"
+regexes = ['''(?i)(STORAGE_KEY|STORAGE_NAMESPACE|STORAGE_PREFIX|CONSENT_STORE)\s*[:=]\s*["'][a-z0-9][a-z0-9._-]{2,}["']''']

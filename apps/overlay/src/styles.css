@@ -1,0 +1,222 @@
+/*
+ * Souffleur AI Overlay — Stil.
+ *
+ * Das Tauri-Fenster selbst ist transparent (tauri.conf.json); html/body bleiben hier
+ * ebenfalls transparent, damit NUR die Karte/Leiste sichtbar ist, nicht ein rechteckiger
+ * Fensterhintergrund. Dunkles Glas-Panel, dezent — bewusst kein Alarm-Rot/Warnfarben
+ * (Anti-Cluely-Ruhe, kein "Cheat-Tool"-Look).
+ */
+
+:root {
+  color-scheme: dark;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  color: #f4f6f8;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+#root {
+  display: flex;
+  justify-content: center;
+}
+
+.overlay-window {
+  width: 100%;
+  max-width: 460px;
+  padding: 0.6rem 0.75rem 0.75rem;
+  border-radius: 14px;
+  background: rgba(13, 20, 28, 0.82);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  cursor: default;
+}
+
+.overlay-window__top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.overlay-window__error {
+  font-size: 0.75rem;
+  color: #ffb4a2;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* --- Consent-Banner --- */
+
+.consent-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.01em;
+  color: #b8c4cf;
+}
+
+.consent-banner__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #5f6b76;
+}
+
+.consent-banner--live .consent-banner__dot {
+  background: #5eead4;
+  box-shadow: 0 0 6px #5eead4;
+}
+
+.consent-banner--connecting .consent-banner__dot {
+  background: #fbbf24;
+}
+
+.consent-banner--error .consent-banner__dot {
+  background: #f87171;
+}
+
+.consent-banner--live {
+  color: #d5f5ee;
+}
+
+/* --- Transcript --- */
+
+.transcript-strip {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.transcript-strip__line {
+  font-size: 0.72rem;
+  color: #93a2ad;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.transcript-strip__speaker {
+  color: #5eead4;
+  font-weight: 600;
+}
+
+/* --- Coaching-Karte --- */
+
+.coaching-card {
+  border-radius: 10px;
+  padding: 0.55rem 0.65rem;
+  background: rgba(255, 255, 255, 0.05);
+  min-height: 2.2rem;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.coaching-card--empty {
+  background: transparent;
+  padding: 0;
+  min-height: 0;
+}
+
+.coaching-card__type {
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #5eead4;
+  margin-bottom: 0.2rem;
+}
+
+.coaching-card__text {
+  font-size: 0.86rem;
+  line-height: 1.35;
+  color: #f4f6f8;
+}
+
+.coaching-card__cursor {
+  display: inline-block;
+  width: 6px;
+  height: 0.9em;
+  margin-left: 2px;
+  background: #5eead4;
+  animation: souffleur-blink 1s step-start infinite;
+  vertical-align: text-bottom;
+}
+
+@keyframes souffleur-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* --- Session-Controls --- */
+
+.session-controls {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.session-controls__toggle,
+.session-controls__action {
+  font-size: 0.72rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #f4f6f8;
+  border-radius: 6px;
+  padding: 0.2rem 0.5rem;
+  cursor: pointer;
+}
+
+.session-controls__action:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.session-controls__form {
+  position: absolute;
+  top: 2.2rem;
+  right: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  background: rgba(13, 20, 28, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 0.5rem;
+  font-size: 0.7rem;
+  z-index: 10;
+  width: 220px;
+}
+
+.session-controls__form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  color: #93a2ad;
+}
+
+.session-controls__form input {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  color: #f4f6f8;
+  padding: 0.2rem 0.35rem;
+  font-size: 0.72rem;
+}

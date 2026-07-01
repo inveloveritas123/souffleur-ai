@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "souffleur-coaching-mcp"
+version = "0.1.0"
+description = "Souffleur AI Coaching-Wissensschicht als MCP-Server (Frameworks, Fragetechniken, Einwand-Reframes als strukturierte Daten, kein Fine-Tuning)."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "Proprietary" }
+dependencies = []
+
+[project.optional-dependencies]
+# Offizielles MCP-Python-SDK — erfordert Python >=3.10 (siehe src/coaching_mcp/server.py
+# Docstring). Optionale Extra, sobald der Laufzeit-Container (W10/W13) auf 3.10+ steht;
+# der Server selbst kommt ohne dieses Paket aus (stdlib-only stdio JSON-RPC).
+mcp-sdk = ["mcp>=1.0"]
+dev = ["pytest>=8", "pytest-asyncio>=1.0", "mypy>=1.10", "ruff>=0.6"]
+
+[project.scripts]
+coaching-mcp = "coaching_mcp.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

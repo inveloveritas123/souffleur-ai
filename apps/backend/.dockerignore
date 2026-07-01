@@ -1,0 +1,27 @@
+# apps/backend/.dockerignore — Welle 10. Hält Tests, lokale Caches, Secrets und Daten
+# aus dem Build-Kontext/Image fern.
+
+tests/
+conftest.py
+README.md
+
+**/__pycache__/
+**/*.pyc
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+
+.venv/
+venv/
+
+.env
+.env.*
+!.env.example
+
+data/
+*.jsonl
+
+.git/
+.gitignore
+.DS_Store

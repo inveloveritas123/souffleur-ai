@@ -1,0 +1,92 @@
+[
+  {
+    "id": "objection-no-time",
+    "card_type": "objection",
+    "title": "Einwand: \"Ich habe keine Zeit dafür\"",
+    "framework": "Motivational Interviewing (Miller & Rollnick) / Lösungsfokussierte Kurzberatung",
+    "summary": "Der Klient verschiebt ein Vorhaben auf mangelnde Zeit. Häufig ein Sustain-Talk-Signal: die Ambivalenz wird auf eine äußere, scheinbar neutrale Ressource (Zeit) verschoben statt auf die eigentliche Priorität.",
+    "guidance": "Nicht gegenargumentieren (\"Zeit hat jeder, man muss sie sich nehmen\") - das erzeugt Reaktanz. Stattdessen die Zeitaussage als Prioritäts-Aussage reframen und konkretisieren: Zeit ist immer eine Frage der Priorität gegenüber etwas anderem. Frage nach der konkurrierenden Priorität, nicht nach der fehlenden Zeit selbst. Dann Skalierung der tatsächlichen Wichtigkeit einholen, um Ambivalenz sichtbar zu machen.",
+    "example_phrases": [
+      "Wenn Sie sagen, dafür ist keine Zeit - wofür ist die Zeit gerade stattdessen da?",
+      "Auf einer Skala von 0 bis 10: Wie wichtig wäre Ihnen das, wenn genug Zeit da wäre?",
+      "Was müsste wegfallen, damit dafür Raum entsteht?"
+    ],
+    "trigger_keywords": ["keine zeit", "zu wenig zeit", "schaffe ich nicht", "komme nicht dazu", "zeitlich nicht machbar"],
+    "source": "Miller, W.R. & Rollnick, S.: Motivational Interviewing; lösungsfokussierte Kurzzeitberatung"
+  },
+  {
+    "id": "objection-not-my-fault",
+    "card_type": "objection",
+    "title": "Einwand: Verantwortung wird extern verortet",
+    "framework": "Systemisches Coaching - zirkuläre Verantwortung",
+    "summary": "Der Klient beschreibt das Problem als Resultat des Verhaltens anderer (Chef, Partner, Team) und positioniert sich selbst als Objekt der Umstände. Das blockiert Handlungsfähigkeit, weil Veränderung nur außerhalb der eigenen Reichweite gesehen wird.",
+    "guidance": "Die externe Zuschreibung nicht bestreiten (sie kann zutreffend sein), sondern den eigenen Handlungsspielraum innerhalb des Systems sichtbar machen. Zirkuläre Frage nutzen: was würde eine dritte, außenstehende Person über die eigene Rolle im Muster sagen? Anschließend vom Beobachten zum kleinsten möglichen eigenen Schritt führen, ohne die Verantwortung der anderen zu relativieren.",
+    "example_phrases": [
+      "Wenn eine gute Freundin von Ihnen das Ganze von außen beobachten würde - was würde ihr an Ihrem eigenen Anteil auffallen?",
+      "Angenommen, Sie könnten am Verhalten der anderen Person nichts ändern - welche kleine Stellschraube bliebe trotzdem bei Ihnen?",
+      "Was würde sich für Sie ändern, wenn Sie selbst 5 Prozent anders reagieren würden - unabhängig davon, ob die andere Seite sich ändert?"
+    ],
+    "trigger_keywords": ["liegt nicht an mir", "die anderen müssten", "mein chef macht", "kann ich nichts machen", "die schuld liegt bei"],
+    "source": "Mailänder systemische Familientherapie (Selvini Palazzoli, Boscolo, Cecchin) - zirkuläres Fragen"
+  },
+  {
+    "id": "objection-already-tried",
+    "card_type": "objection",
+    "title": "Einwand: \"Das haben wir schon versucht\"",
+    "framework": "Lösungsfokussiertes Arbeiten - Ausnahme- und Unterschiedsfrage",
+    "summary": "Der Klient lehnt einen Vorschlag ab, weil eine vermeintlich ähnliche Maßnahme bereits gescheitert ist. Das Risiko ist eine vorzeitige Schließung der Lösungssuche, weil ein einzelner gescheiterter Versuch verallgemeinert wird.",
+    "guidance": "Nicht den Vorschlag verteidigen oder variieren, bevor der frühere Versuch verstanden ist. Konkretisieren, was genau versucht wurde, wie lange, unter welchen Bedingungen - meist zeigt sich ein Unterschied zur jetzt vorgeschlagenen Variante. Parallel nach Ausnahmen suchen: Momente, in denen es - wenn auch nur kurz - trotzdem besser lief.",
+    "example_phrases": [
+      "Was genau haben Sie damals konkret anders gemacht als heute?",
+      "Gab es trotzdem Momente, in denen es - auch nur für kurze Zeit - ein kleines Stück besser lief? Was war da anders?",
+      "Was hat damals dazu geführt, dass es nicht weitergeführt wurde?"
+    ],
+    "trigger_keywords": ["schon versucht", "haben wir schon probiert", "hat nicht funktioniert", "bringt nichts", "kennen wir schon"],
+    "source": "de Shazer, S. & Kim Berg, I.: Lösungsfokussierte Kurzzeittherapie - Ausnahme-Frage"
+  },
+  {
+    "id": "objection-wont-work-for-me",
+    "card_type": "objection",
+    "title": "Einwand: \"Das funktioniert bei mir nicht\"",
+    "framework": "Ressourcenorientierung / Ausnahmen suchen",
+    "summary": "Generalisierte Selbstabwertung oder Pauschalurteil über die eigene Person (\"ich bin einfach kein Typ dafür\"). Verdeckt häufig vorhandene, aber nicht erinnerte Kompetenzbeispiele.",
+    "guidance": "Die Generalisierung höflich anzweifeln, ohne zu widersprechen - durch gezielte Suche nach einer Gegen-Episode aus der eigenen Biografie, in der eine vergleichbare Fähigkeit bereits gezeigt wurde. Den Transfer von dieser Ressourcen-Episode auf die aktuelle Situation explizit machen lassen, nicht vorgeben.",
+    "example_phrases": [
+      "Gab es in Ihrem Leben schon einmal eine Situation, in der Sie etwas Ähnliches trotzdem geschafft haben - auch in einem ganz anderen Bereich?",
+      "Was war damals anders, dass es Ihnen dort gelungen ist?",
+      "Was davon ließe sich - in kleinem Maßstab - auf die jetzige Situation übertragen?"
+    ],
+    "trigger_keywords": ["bin nicht der typ", "funktioniert bei mir nicht", "ich kann das einfach nicht", "war schon immer so"],
+    "source": "Lösungsfokussierte Kurzzeitberatung - ressourcenorientierte Gegenfrage"
+  },
+  {
+    "id": "objection-yes-but",
+    "card_type": "objection",
+    "title": "Einwand: Ja-aber-Muster",
+    "framework": "Motivational Interviewing - Change Talk vs. Sustain Talk",
+    "summary": "Der Klient stimmt einem Vorschlag verbal zu, fügt aber sofort ein Gegenargument an (\"Ja, das wäre gut, aber...\"). Dieses Muster signalisiert Ambivalenz: ein Teil will Veränderung (Change Talk), ein Teil hält am Status quo fest (Sustain Talk). Direktes Drängen auf das \"Ja\" verstärkt typischerweise den \"aber\"-Teil (Reaktanz).",
+    "guidance": "Beide Seiten der Ambivalenz benennen statt eine Seite zu verstärken (doppelseitiges Reflektieren). Nicht das \"aber\" widerlegen, sondern den dahinterliegenden Wert oder die Sorge explorieren. Erst wenn die Sorge verstanden ist, lässt sich der Change-Talk-Anteil verstärken, ohne dass der Klient sich gedrängt fühlt.",
+    "example_phrases": [
+      "Auf der einen Seite spricht etwas in Ihnen für die Veränderung, auf der anderen Seite gibt es einen guten Grund, vorsichtig zu sein - was genau ist dieser Grund?",
+      "Was müsste anders sein, damit das \"aber\" wegfällt?",
+      "Wie wichtig ist Ihnen der erste Teil im Vergleich zum zweiten - auf einer Skala von 0 bis 10?"
+    ],
+    "trigger_keywords": ["ja aber", "stimmt schon aber", "eigentlich schon nur", "grundsätzlich ja jedoch"],
+    "source": "Miller, W.R. & Rollnick, S.: Motivational Interviewing - Ambivalenz-Arbeit"
+  },
+  {
+    "id": "objection-not-my-control",
+    "card_type": "objection",
+    "title": "Einwand: Ohnmachtsglaube - \"Das kann ich nicht ändern\"",
+    "framework": "Einflusszirkel (Stephen Covey) / Systemisches Coaching",
+    "summary": "Der Klient erlebt die Situation als vollständig außerhalb des eigenen Einflussbereichs und schließt daraus, dass Handeln zwecklos ist. Häufig wird der Sorgenkreis (alles, worüber man sich Gedanken macht) mit dem Einflusskreis (worauf man tatsächlich wirken kann) gleichgesetzt.",
+    "guidance": "Sorgenkreis und Einflusskreis explizit trennen lassen: was kann beeinflusst werden, was kann nur beobachtet werden. Den Fokus bewusst auf den - oft kleinen - Einflussbereich lenken, ohne die Berechtigung der Sorge im größeren Kreis zu negieren. Konkretisierung auf eine einzige, kleine Handlung innerhalb des Einflusskreises.",
+    "example_phrases": [
+      "Was an der Situation liegt vollständig außerhalb Ihres Einflusses - und was, auch wenn es klein ist, liegt tatsächlich in Ihrer Hand?",
+      "Wenn Sie nur auf den Teil schauen, den Sie wirklich beeinflussen können: was wäre dort ein erster, machbarer Schritt?",
+      "Wie verändert sich Ihr Blick auf die Situation, wenn Sie den Teil, den Sie nicht ändern können, bewusst loslassen?"
+    ],
+    "trigger_keywords": ["kann ich nicht ändern", "liegt nicht in meiner hand", "habe keinen einfluss", "macht ja sowieso keinen unterschied"],
+    "source": "Covey, S.: Die 7 Wege zur Effektivität - Einflusskreis/Sorgenkreis; systemisches Coaching"
+  }
+]

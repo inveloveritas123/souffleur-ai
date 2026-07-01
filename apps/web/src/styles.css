@@ -1,0 +1,82 @@
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  line-height: 1.5;
+}
+
+body {
+  margin: 0;
+  background: #fafafa;
+  color: #1a1a1a;
+}
+
+.app-shell {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.app-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+}
+
+.app-title {
+  font-weight: 700;
+  font-size: 1.25rem;
+}
+
+.app-nav {
+  display: flex;
+  gap: 1rem;
+}
+
+.nav-link {
+  text-decoration: none;
+  color: #555;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+}
+
+.nav-link--active {
+  color: #1a1a1a;
+  background: #e5e5ff;
+  font-weight: 600;
+}
+
+.consent-checkbox-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+.upload-section {
+  margin: 1rem 0;
+}
+
+.protocol-export-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.segment-timestamp {
+  color: #777;
+  font-size: 0.85em;
+}
+
+[role="alert"] {
+  color: #b00020;
+}
