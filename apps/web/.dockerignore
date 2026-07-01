@@ -1,0 +1,25 @@
+# apps/web/.dockerignore — Welle 10. Hält node_modules, Build-Artefakte, Tests, lokale
+# Caches, Secrets aus dem Build-Kontext/Image fern.
+
+node_modules/
+dist/
+dist-ssr/
+*.local
+.vite/
+
+tests/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+playwright.config.ts
+
+README.md
+
+.env
+.env.*
+!.env.example
+
+.git/
+.gitignore
+.DS_Store
