@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from urllib.parse import urlsplit
 
 # --- Gepinnte Modell-IDs (ARCHITECTURE.md, Gate F1: kein 'latest') -----------------
 MODEL_STT_LIVE = "voxtral-mini-transcribe-realtime-2602"
@@ -43,6 +44,21 @@ class SttProviderError(ValueError):
 
 class NonEuEndpointError(ValueError):
     """MISTRAL_BASE_URL zeigt nicht auf den erzwungenen EU-Endpunkt (Gate E1)."""
+
+
+_ALLOWED_MISTRAL_HOST = "api.mistral.ai"
+
+
+def _is_eu_mistral_host(url: str) -> bool:
+    """Exakter Host-Vergleich (kein Präfix-Vergleich) — Gate E1, BLOCKER-Fix.
+
+    `startswith("https://api.mistral.ai")` würde `https://api.mistral.ai.attacker.example`
+    fälschlich akzeptieren (der Angreifer-Host beginnt textuell mit dem erlaubten Präfix).
+    `urlsplit(...).hostname` liefert stattdessen den tatsächlichen Host, gegen den exakt
+    verglichen wird; zusätzlich wird `https` als Schema erzwungen (kein Downgrade).
+    """
+    parts = urlsplit(url)
+    return parts.scheme == "https" and parts.hostname == _ALLOWED_MISTRAL_HOST
 
 
 def _env(name: str, default: str | None = None) -> str | None:
@@ -121,7 +137,7 @@ class Settings:
             )
 
         base_url = _env("MISTRAL_BASE_URL", MISTRAL_BASE_URL_DEFAULT) or MISTRAL_BASE_URL_DEFAULT
-        if not base_url.startswith("https://api.mistral.ai"):
+        if not _is_eu_mistral_host(base_url):
             raise NonEuEndpointError(
                 f"MISTRAL_BASE_URL muss auf https://api.mistral.ai (EU) zeigen, war: {base_url!r}"
             )

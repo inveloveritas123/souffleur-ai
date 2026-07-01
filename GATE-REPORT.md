@@ -1,4 +1,4 @@
-# GATE-REPORT — target=`.` — 2026-07-01T00:59:50Z
+# GATE-REPORT — target=`.` — 2026-07-01T01:33:38Z
 
 ## Zusammenfassung
 - **Ergebnis:** GRUEN
@@ -25,13 +25,13 @@
 | 1_spec | A4 | warn,llm | SKIP | kein BMAD-QA-Nachweis (.werkbank/qa-evidence.json) |
 | 2_static | B1 | block,deterministic,★pflicht | PASS | ruff sauber |
 | 2_static | B2 | block,deterministic,★pflicht | PASS | mypy sauber |
-| 2_static | B3 | block,deterministic,★pflicht | PASS | Build/Compile sauber (87 .py) |
-| 2_static | D1 | block,deterministic,★pflicht | PASS | kein High/Medium (386 Low, beraten) |
+| 2_static | B3 | block,deterministic,★pflicht | PASS | Build/Compile sauber (88 .py) |
+| 2_static | D1 | block,deterministic,★pflicht | PASS | kein High/Medium (425 Low, beraten) |
 | 2_static | D2 | block,deterministic | SKIP | pip-audit/safety nicht installiert |
 | 2_static | D3 | block,deterministic,★pflicht | PASS | kein Secret gefunden |
 | 2_static | D4 | warn,deterministic | SKIP | pip-licenses nicht installiert |
-| 3_tests | C1 | block,deterministic,★pflicht | PASS | Tests grün (172 Tests in tests) |
-| 3_tests | C2 | block,deterministic,★pflicht | PASS | Coverage 98% >= 70% |
+| 3_tests | C1 | block,deterministic,★pflicht | PASS | Tests grün (173 Tests in tests) |
+| 3_tests | C2 | block,deterministic,★pflicht | PASS | Coverage 96% >= 70% |
 | 3_tests | C3 | block,deterministic | SKIP | keine Integrationstests |
 | 3_tests | C4 | block,deterministic | FAIL | E2E rot (Playwright, apps/web/playwright.config.ts) |
 | 3_tests | C5 | warn,deterministic | SKIP | keine Concurrency-/Race-Tests |
@@ -80,26 +80,26 @@ at /Users/roberthargesheimer/Documents/Claude/Projects/Souffleur…at /Users/rob
 *********************
 - **G3** — WARN — 16 Query-in-Loop-Verdacht (N+1)
     - `tests/unit/test_api_live_ws.py:107` [n+1-query] ***********
-    - `apps/backend/src/souffleur/bus/event_bus.py:115` [n+1-query] *********
+    - `apps/backend/src/souffleur/bus/event_bus.py:141` [n+1-query] *********
     - `apps/backend/src/souffleur/adapters/llm/mistral.py:58` [n+1-query] *********
-    - `apps/backend/src/souffleur/adapters/stt/voxtral_api.py:168` [n+1-query] ***********
-    - `apps/backend/src/souffleur/adapters/stt/voxtral_api.py:170` [n+1-query] ***********
-    - `apps/backend/src/souffleur/adapters/stt/voxtral_api.py:323` [n+1-query] ***************
-    - `apps/backend/src/souffleur/adapters/stt/voxtral_api.py:328` [n+1-query] ***************
-    - `apps/backend/src/souffleur/adapters/stt/voxtral_api.py:329` [n+1-query] ***************
-    - `apps/backend/src/souffleur/adapters/stt/voxtral_api.py:330` [n+1-query] ***************
-    - `apps/backend/src/souffleur/adapters/stt/gladia.py:222` [n+1-query] ****************
-    - `apps/backend/src/souffleur/adapters/stt/gladia.py:225` [n+1-query] ********
-    - `apps/backend/src/souffleur/adapters/stt/gladia.py:231` [n+1-query] ********
-    - `apps/backend/src/souffleur/api/live.py:148` [n+1-query] ***********
-    - `apps/backend/src/souffleur/api/live.py:150` [n+1-query] ***********
-    - `apps/backend/src/souffleur/api/live.py:154` [n+1-query] ***********
-    - `apps/backend/src/souffleur/api/live.py:161` [n+1-query] ***********
+    - `apps/backend/src/souffleur/adapters/stt/voxtral_api.py:169` [n+1-query] ***********
+    - `apps/backend/src/souffleur/adapters/stt/voxtral_api.py:171` [n+1-query] ***********
+    - `apps/backend/src/souffleur/adapters/stt/voxtral_api.py:334` [n+1-query] ***************
+    - `apps/backend/src/souffleur/adapters/stt/voxtral_api.py:339` [n+1-query] ***************
+    - `apps/backend/src/souffleur/adapters/stt/voxtral_api.py:340` [n+1-query] ***************
+    - `apps/backend/src/souffleur/adapters/stt/voxtral_api.py:341` [n+1-query] ***************
+    - `apps/backend/src/souffleur/adapters/stt/gladia.py:231` [n+1-query] ****************
+    - `apps/backend/src/souffleur/adapters/stt/gladia.py:234` [n+1-query] ********
+    - `apps/backend/src/souffleur/adapters/stt/gladia.py:240` [n+1-query] ********
+    - `apps/backend/src/souffleur/api/live.py:151` [n+1-query] ***********
+    - `apps/backend/src/souffleur/api/live.py:153` [n+1-query] ***********
+    - `apps/backend/src/souffleur/api/live.py:157` [n+1-query] ***********
+    - `apps/backend/src/souffleur/api/live.py:164` [n+1-query] ***********
 - **H2** — WARN — 5 Funktion(en) ueber Komplexitaet 12
     - `apps/backend/tests/test_voxtral_api.py:102` [complexity] test_transcribe_batch_returns_diarized_result_with_word_timestamps() = 16
     - `apps/backend/tests/test_voxtral_local.py:131` [complexity] test_transcribe_batch_parses_segments_and_words() = 14
-    - `apps/backend/tests/test_gladia.py:156` [complexity] test_transcribe_batch_happy_path_parses_diarized_result() = 19
-    - `apps/backend/tests/test_protocol_api.py:184` [complexity] test_post_protocol_with_valid_consent_returns_diarized_protocol() = 29
+    - `apps/backend/tests/test_gladia.py:173` [complexity] test_transcribe_batch_happy_path_parses_diarized_result() = 19
+    - `apps/backend/tests/test_protocol_api.py:212` [complexity] test_post_protocol_with_valid_consent_returns_diarized_protocol() = 29
     - `apps/backend/tests/test_live_api.py:182` [complexity] test_live_ws_accepts_audio_after_consent_and_forwards_transcript_and_card_events() = 21
 - **H3** — WARN — README enthaelt 1 Platzhalter
     - `README.md:25` [docs-placeholder] privacy/          DSGVO-Artefakt…privacy/          DSGVO-Artefakte (DATA-FLOW, DPIA, PROCESSING-REGISTER, TOMs, …)

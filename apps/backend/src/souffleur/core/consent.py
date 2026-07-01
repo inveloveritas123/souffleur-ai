@@ -24,12 +24,18 @@ class ConsentDeniedError(Exception):
 
 @dataclass(frozen=True)
 class ConsentRecord:
-    """Eine dokumentierte, erteilte Einwilligung (z. B. aus dem Web-UI-Consent-Schritt)."""
+    """Eine dokumentierte, erteilte Einwilligung (z. B. aus dem Web-UI-Consent-Schritt).
+
+    `text_version` (Finding 3, §201 StGB): welche Version des Einwilligungstexts der/die
+    Teilnehmende bestätigt hat — optional für Rückwärtskompatibilität mit bestehenden
+    Call-Sites, die (noch) keine Version führen.
+    """
 
     consent_ref: str
     tenant_id: str
     session_id: str
     granted_at: str
+    text_version: str | None = None
 
 
 class ConsentGate:

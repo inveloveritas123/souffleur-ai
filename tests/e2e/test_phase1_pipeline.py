@@ -151,10 +151,17 @@ class Phase1PipelineE2ETest(unittest.TestCase):
         client, port = _build_test_app(self._audit_path)
 
         consent_response = client.post(
-            "/api/v1/consent", json={"tenant_id": "zukunftsbund", "session_id": "session-e2e"}
+            "/api/v1/consent",
+            json={
+                "tenant_id": "zukunftsbund",
+                "session_id": "session-e2e",
+                "participant_acknowledged": True,
+                "text_version": "v1.0",
+            },
         )
         self.assertEqual(consent_response.status_code, 200)
         consent_ref = consent_response.json()["consent_ref"]
+        self.assertEqual(consent_response.json()["text_version"], "v1.0")
 
         protocol_response = client.post(
             "/api/v1/protocol",
@@ -184,8 +191,10 @@ class Phase1PipelineE2ETest(unittest.TestCase):
         self.assertTrue(port.received_opts.diarization)
         self.assertTrue(port.received_opts.word_timestamps)
 
-        # GET liefert dasselbe Protokoll zurück.
-        get_response = client.get(f"/api/v1/protocol/{body['id']}")
+        # GET liefert dasselbe Protokoll zurück (Finding 2, BLOCKER IDOR: consent_ref Pflicht).
+        get_response = client.get(
+            f"/api/v1/protocol/{body['id']}", params={"consent_ref": consent_ref}
+        )
         self.assertEqual(get_response.status_code, 200)
         self.assertEqual(get_response.json()["summary"], body["summary"])
 
@@ -201,13 +210,34 @@ class Phase1PipelineE2ETest(unittest.TestCase):
 
     def test_get_unknown_protocol_id_returns_404(self) -> None:
         client, _port = _build_test_app(self._audit_path)
-        response = client.get("/api/v1/protocol/does-not-exist")
+        consent_response = client.post(
+            "/api/v1/consent", json={"participant_acknowledged": True, "text_version": "v1.0"}
+        )
+        consent_ref = consent_response.json()["consent_ref"]
+
+        response = client.get(
+            "/api/v1/protocol/does-not-exist", params={"consent_ref": consent_ref}
+        )
         self.assertEqual(response.status_code, 404)
+
+    def test_get_protocol_without_consent_ref_is_rejected_with_403(self) -> None:
+        """Finding 2 (BLOCKER IDOR): ohne consent_ref darf niemand ein Protokoll lesen —
+        selbst nicht das eigene."""
+        client, _port = _build_test_app(self._audit_path)
+        response = client.get("/api/v1/protocol/does-not-exist")
+        self.assertEqual(response.status_code, 403)
 
     def test_protocol_upload_for_wrong_tenant_consent_is_rejected(self) -> None:
         client, _port = _build_test_app(self._audit_path)
 
-        consent_response = client.post("/api/v1/consent", json={"tenant_id": "tenant-a"})
+        consent_response = client.post(
+            "/api/v1/consent",
+            json={
+                "tenant_id": "tenant-a",
+                "participant_acknowledged": True,
+                "text_version": "v1.0",
+            },
+        )
         consent_ref = consent_response.json()["consent_ref"]
 
         response = client.post(

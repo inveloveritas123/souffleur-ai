@@ -43,10 +43,14 @@ class _FakeProcess:
         self.stdin = _FakeStdin()
         self.stdout = _FakeStdout([json.dumps(r).encode("utf-8") + b"\n" for r in responses])
         self.waited = False
+        self.killed = False
 
     async def wait(self) -> int:
         self.waited = True
         return 0
+
+    def kill(self) -> None:
+        self.killed = True
 
 
 def _initialize_response(request_id: int = 1) -> dict[str, Any]:
@@ -157,6 +161,82 @@ def test_aclose_is_a_noop_when_never_started() -> None:
     client = CoachingMcpStdioClient(process_factory=lambda: (_ for _ in ()).throw(AssertionError()))
 
     asyncio.run(client.aclose())  # darf keinen Subprozess starten/kein Fehler
+
+
+class _HangingStdout:
+    """`readline()` hängt für immer — simuliert einen Coaching-MCP-Prozess, der nicht mehr
+    antwortet (Finding 11: Deadlock-Schutz für `stdout.readline()` unter gehaltenem Lock)."""
+
+    async def readline(self) -> bytes:
+        await asyncio.Event().wait()  # niemals gesetzt -> hängt, bis von außen abgebrochen
+        raise AssertionError("unreachable")  # pragma: no cover
+
+
+class _HangingProcess:
+    """`wait()` hängt für immer, bis `kill()` aufgerufen wird — simuliert einen Coaching-MCP-
+    Subprozess, der auf ein normales `stdin.close()` nicht reagiert (Finding 16).
+
+    `asyncio.Event()` bindet sich unter Python 3.9 sofort an die zum Konstruktionszeitpunkt
+    aktuelle Event-Loop (dasselbe Problem wie `CoachingMcpStdioClient._lock`, siehe dessen
+    Docstring) — die Konstruktion hier passiert VOR `asyncio.run(...)`, daher lazy statt in
+    `__init__`.
+    """
+
+    def __init__(self) -> None:
+        self.stdin = _FakeStdin()
+        self.stdout = _HangingStdout()
+        self.killed = False
+        self._exit_event: asyncio.Event | None = None
+
+    def _event(self) -> asyncio.Event:
+        if self._exit_event is None:
+            self._exit_event = asyncio.Event()
+        return self._exit_event
+
+    def kill(self) -> None:
+        self.killed = True
+        self._event().set()
+
+    async def wait(self) -> int:
+        await self._event().wait()
+        return -9
+
+
+def test_request_raises_clear_error_on_readline_timeout_instead_of_hanging() -> None:
+    """Finding 11 (MCP-Deadlock): `await stdout.readline()` OHNE Timeout unter gehaltenem Lock
+    hängt die gesamte Session für immer, wenn der MCP-Server nie antwortet. Der Fix muss einen
+    Timeout erzwingen und `CoachingMcpError` werfen statt zu hängen."""
+    process = _HangingProcess()
+
+    async def process_factory() -> _HangingProcess:
+        return process
+
+    client = CoachingMcpStdioClient(process_factory=process_factory, request_timeout_s=0.05)
+
+    async def scenario() -> None:
+        # `_ensure_started` ruft intern `_request("initialize", ...)` — genau dort hängt es.
+        await asyncio.wait_for(client.get_coaching_knowledge("objection"), timeout=2.0)
+
+    with pytest.raises(CoachingMcpError):
+        asyncio.run(scenario())
+
+
+def test_aclose_kills_process_when_wait_times_out() -> None:
+    """Finding 16 (MCP aclose ohne kill): `await process.wait()` OHNE Timeout in `aclose()`
+    hängt für immer, wenn der Prozess nach `stdin.close()` nicht selbst beendet. Der Fix muss
+    nach einem Timeout `process.kill()` aufrufen."""
+    process = _HangingProcess()
+    # `wait()` hängt normalerweise ewig — nur `kill()` setzt das Exit-Event (siehe oben).
+
+    async def process_factory() -> _HangingProcess:
+        return process
+
+    client = CoachingMcpStdioClient(process_factory=process_factory, close_timeout_s=0.05)
+    client._process = process  # Prozess "künstlich" als gestartet markieren, kein Handshake nötig
+
+    asyncio.run(asyncio.wait_for(client.aclose(), timeout=2.0))
+
+    assert process.killed is True
 
 
 def test_aclose_closes_stdin_and_waits_for_process() -> None:

@@ -30,6 +30,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
+import logging
 import uuid
 from dataclasses import dataclass
 from typing import Any
@@ -47,6 +48,8 @@ from souffleur.ports.types import SessionContext
 from souffleur.trigger.router import TriggerRouter
 
 LIVE_WS_PATH = "/ws/v1/live"
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -164,11 +167,17 @@ def build_live_router(deps: LiveDeps) -> APIRouter:
                 return
 
         async def stt_events_loop() -> None:
-            with contextlib.suppress(Exception):
-                async for event in deps.transcription_port.events(handle):
-                    if event.kind != "final":
-                        continue
-                    correlation_id = str(uuid.uuid4())
+            # Finding 9 (Live-Pipeline stirbt still): `contextlib.suppress(Exception)` durfte
+            # NIE die ganze Schleife umschließen — ein einzelner Trigger-/MCP-/LLM-Fehler bei
+            # EINEM Segment brach die gesamte `async for`-Iteration ab und damit endete die
+            # Kartenpipeline für den Rest der Session lautlos. Jetzt fängt try/except NUR die
+            # Verarbeitung EINES Segments; ein Fehler wird geloggt, das Segment übersprungen,
+            # die Schleife läuft für alle folgenden Segmente unbeeinträchtigt weiter.
+            async for event in deps.transcription_port.events(handle):
+                if event.kind != "final":
+                    continue
+                correlation_id = str(uuid.uuid4())
+                try:
                     decision = await deps.trigger_router.decide(
                         session_id=session_id,
                         tenant_id=tenant_id,
@@ -183,6 +192,14 @@ def build_live_router(deps: LiveDeps) -> APIRouter:
                             trigger_text=event.text,
                             correlation_id=correlation_id,
                         )
+                except Exception:  # noqa: BLE001 - bewusst breit: ein Segment darf die Session nie killen
+                    logger.exception(
+                        "stt_events_loop: Trigger-/Reasoning-Fehler bei Segment übersprungen "
+                        "(session_id=%s, correlation_id=%s)",
+                        session_id,
+                        correlation_id,
+                    )
+                    continue
 
         async def bus_forward_loop() -> None:
             with contextlib.suppress(Exception):
@@ -195,6 +212,15 @@ def build_live_router(deps: LiveDeps) -> APIRouter:
         finally:
             with contextlib.suppress(Exception):
                 await deps.transcription_port.close_stream(handle)
+            # Finding 15 (Leak): ohne das wächst `TriggerRouter._last_fired_at_ms` unbegrenzt
+            # über die Prozesslaufzeit — jede Session, die je eine Karte auslöste, bliebe für
+            # immer im Cooldown-Dict. `getattr`-Guard: Test-Doubles für `trigger_router` müssen
+            # keine echte `TriggerRouter`-Instanz sein und implementieren `forget_session`
+            # eventuell nicht — best-effort, kein Hard-Requirement des `decide()`-Vertrags.
+            forget_session = getattr(deps.trigger_router, "forget_session", None)
+            if callable(forget_session):
+                with contextlib.suppress(Exception):
+                    forget_session(session_id)
             await deps.event_bus.publish(
                 session_id,
                 BusEvent(

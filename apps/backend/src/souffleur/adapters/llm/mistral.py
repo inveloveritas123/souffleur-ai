@@ -95,3 +95,22 @@ class MistralLlmAdapter:
         return ClassificationResult(
             label=raw_text.strip(), raw_text=raw_text, model=self._settings.model_trigger
         )
+
+    async def aclose(self) -> None:
+        """Schließt den zugrunde liegenden HTTP-Client (Finding 15, Leak-Fix).
+
+        `mistralai.Mistral` hat kein eigenes `close()`/`aclose()` — es hält den tatsächlichen
+        Connection-Pool aber unter `sdk_configuration.async_client` (`httpx.AsyncClient`, für
+        `stream_async`/`complete_async`) bzw. `sdk_configuration.client` (`httpx.Client`,
+        ungenutzt in diesem Adapter, defensiv trotzdem geschlossen). Ohne dies bleibt die
+        Verbindung zu api.mistral.ai beim App-Shutdown offen (Finding 10, `core/app.py`
+        schließt diesen Adapter jetzt über den Lifespan-Hook)."""
+        sdk_configuration = getattr(self._client, "sdk_configuration", None)
+        if sdk_configuration is None:
+            return
+        async_client = getattr(sdk_configuration, "async_client", None)
+        if async_client is not None:
+            await async_client.aclose()
+        sync_client = getattr(sdk_configuration, "client", None)
+        if sync_client is not None:
+            sync_client.close()

@@ -153,3 +153,25 @@ def test_non_eu_mistral_base_url_rejected(monkeypatch: pytest.MonkeyPatch) -> No
     monkeypatch.setenv("MISTRAL_BASE_URL", "https://not-the-eu-endpoint.example.test")
     with pytest.raises(NonEuEndpointError):
         Settings.from_env()
+
+
+def test_mistral_base_url_lookalike_host_with_matching_prefix_rejected(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Ein Lookalike-Host, der nur mit 'api.mistral.ai' *beginnt* (Präfix-Bypass), muss
+    abgelehnt werden — nur der exakte Host 'api.mistral.ai' ist zulässig (Gate E1, BLOCKER-Fix).
+
+    `startswith("https://api.mistral.ai")` würde diesen Host fälschlich akzeptieren, weil er
+    textuell mit dem erlaubten Präfix beginnt, obwohl `urlsplit(...).hostname` ein komplett
+    anderer (Angreifer-kontrollierter) Host ist.
+    """
+    monkeypatch.setenv("MISTRAL_BASE_URL", "https://api.mistral.ai.lookalike-host.example")
+    with pytest.raises(NonEuEndpointError):
+        Settings.from_env()
+
+
+def test_mistral_base_url_non_https_scheme_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Auch mit korrektem Host muss das Schema https sein (kein Downgrade auf http)."""
+    monkeypatch.setenv("MISTRAL_BASE_URL", "http://api.mistral.ai")
+    with pytest.raises(NonEuEndpointError):
+        Settings.from_env()

@@ -14,7 +14,11 @@ Welle 6 bleiben unverändert (kein Override, kein Pfad-Konflikt: `/api/v1/*` vs.
 """
 from __future__ import annotations
 
+import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -39,6 +43,47 @@ from souffleur.trigger.router import TriggerRouter
 _REPO_ROOT = Path(__file__).resolve().parents[5]
 _COACHING_MCP_DIR = _REPO_ROOT / "packages" / "coaching-mcp"
 _COACHING_MCP_SRC = _COACHING_MCP_DIR / "src"
+
+logger = logging.getLogger(__name__)
+
+
+async def _aclose_if_supported(resource: Any, *, what: str) -> None:
+    """Ruft `resource.aclose()` auf, falls vorhanden — best-effort, loggt statt zu crashen.
+
+    Sowohl `CoachingKnowledgeClient` (Protocol) als auch `LlmPort` (Protocol) verlangen kein
+    `aclose()` (Test-Doubles müssen es nicht implementieren) — die konkreten Default-Adapter
+    (`CoachingMcpStdioClient`, `MistralLlmAdapter`) haben aber eines (Finding 10/15)."""
+    aclose = getattr(resource, "aclose", None)
+    if not callable(aclose):
+        return
+    try:
+        await aclose()
+    except Exception:  # noqa: BLE001 - Shutdown darf nie an einem einzelnen Resource-Close hängen
+        logger.exception("Fehler beim Schließen von %s (%r) im App-Shutdown", what, resource)
+
+
+def _build_lifespan(
+    mcp_client: CoachingKnowledgeClient,
+    llm_port: LlmPort,
+) -> Any:
+    """Baut den FastAPI-Lifespan-Hook (Finding 10, MCP-Zombie / Finding 15, Mistral-Leak).
+
+    Vorher wurde `CoachingMcpStdioClient.aclose()` nirgendwo aufgerufen — der lazy gestartete
+    stdio-Subprozess (Coaching-MCP-Server) blieb beim App-Shutdown als Zombie-Prozess zurück.
+    Ebenso wurde der von `MistralLlmAdapter` gehaltene HTTP-Client nie geschlossen. Dieser
+    Lifespan schließt beide beim Shutdown — unabhängig voneinander (ein Fehler beim einen
+    verhindert nicht das Schließen des anderen).
+    """
+
+    @asynccontextmanager
+    async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
+        try:
+            yield
+        finally:
+            await _aclose_if_supported(mcp_client, what="coaching_mcp_client")
+            await _aclose_if_supported(llm_port, what="llm_port")
+
+    return _lifespan
 
 
 def _default_coaching_mcp_client() -> CoachingMcpStdioClient:
@@ -114,7 +159,11 @@ def create_app(
         reasoning_engine=resolved_reasoning_engine,
     )
 
-    fastapi_app = FastAPI(title="Souffleur AI Backend", version="0.1.0")
+    fastapi_app = FastAPI(
+        title="Souffleur AI Backend",
+        version="0.1.0",
+        lifespan=_build_lifespan(resolved_mcp_client, resolved_llm_port),
+    )
     fastapi_app.state.protocol_deps = protocol_deps
     fastapi_app.state.live_deps = live_deps
     fastapi_app.state.deps = protocol_deps  # Rückwärtskompatibel (Welle 6: `app.state.deps`)

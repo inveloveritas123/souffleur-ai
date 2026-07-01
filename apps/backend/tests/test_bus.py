@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import asyncio
 
+import pytest
 from souffleur.bus import (
     BusEvent,
     BusEventPayload,
@@ -135,6 +136,57 @@ def test_bus_event_payload_defaults_to_no_fields_set() -> None:
     assert payload.text is None
     assert payload.t_start_ms is None
     assert payload.t_end_ms is None
+
+
+def test_publish_drops_oldest_card_streamed_when_queue_is_full() -> None:
+    """Finding 14 (Unbounded Bus-Queue): eine unbegrenzte `asyncio.Queue()` je Abonnent kann bei
+    einem langsamen/fehlenden Konsumenten unbegrenzt wachsen (Memory-Leak/DoS-Vektor). Für die
+    hochfrequenten, niedrigwertigen `card.streamed`-Deltas ist Drop-Oldest die richtige
+    Backpressure-Strategie: der Bus darf dafür NIE blockieren."""
+
+    async def scenario() -> list[BusEvent]:
+        bus = InProcessTranscriptEventBus(maxsize=3)
+        subscription = bus.subscribe("session-full")  # registriert die Queue, OHNE zu konsumieren
+
+        for i in range(10):
+            await asyncio.wait_for(
+                bus.publish("session-full", _event("session-full", i, "card.streamed", f"chunk-{i}")),
+                timeout=1,
+            )
+
+        received: list[BusEvent] = []
+        async for event in subscription:
+            received.append(event)
+            if len(received) == 3:
+                break
+        return received
+
+    received = asyncio.run(scenario())
+
+    assert len(received) == 3
+    # Die ÄLTESTEN drei (chunk-0..6) wurden verworfen — übrig sind die LETZTEN drei.
+    assert [event.payload.text for event in received] == ["chunk-7", "chunk-8", "chunk-9"]
+
+
+def test_publish_backpressures_non_droppable_event_types_when_queue_is_full() -> None:
+    """Nur `card.streamed` darf verworfen werden — alle anderen Event-Typen (z. B.
+    `transcript.final`) müssen weiterhin per Backpressure blockieren, damit nie stillschweigend
+    ein wichtiges Ereignis verloren geht."""
+
+    async def scenario() -> None:
+        bus = InProcessTranscriptEventBus(maxsize=2)
+        bus.subscribe("session-bp")  # registriert die Queue, OHNE zu konsumieren
+
+        await bus.publish("session-bp", _event("session-bp", 1, "transcript.final", "a"))
+        await bus.publish("session-bp", _event("session-bp", 2, "transcript.final", "b"))
+
+        with pytest.raises(asyncio.TimeoutError):
+            await asyncio.wait_for(
+                bus.publish("session-bp", _event("session-bp", 3, "transcript.final", "c")),
+                timeout=0.05,
+            )
+
+    asyncio.run(scenario())
 
 
 def test_close_session_terminates_subscriber_generator() -> None:

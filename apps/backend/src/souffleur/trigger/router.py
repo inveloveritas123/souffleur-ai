@@ -92,7 +92,13 @@ class TriggerRouter:
         if verdict.decision == RuleDecision.CARD:
             return self._apply_cooldown(session_id, verdict.card_type, source="rules")
 
-        # RuleDecision.UNCERTAIN -> billiger LLM-Klassifikator (ministral-3b-2512)
+        # RuleDecision.UNCERTAIN -> billiger LLM-Klassifikator (ministral-3b-2512).
+        # Finding 12 (Trigger-Kosten vor Cooldown): der Cooldown-Check MUSS vor dem bezahlten
+        # classify-Aufruf greifen — sonst zahlt jede Session während des Cooldown-Fensters für
+        # Klassifikationen, deren Ergebnis ohnehin nie feuern darf.
+        if self._in_cooldown(session_id):
+            return TriggerDecision(fire=False, card_type=None, source="rules")
+
         classification = await self._llm.classify(
             [
                 ChatMessage(role="system", content=CLASSIFIER_SYSTEM_PROMPT),
@@ -115,12 +121,23 @@ class TriggerRouter:
             return TriggerDecision(fire=False, card_type=None, source="llm")
         return self._apply_cooldown(session_id, card_type, source="llm")
 
+    def forget_session(self, session_id: str) -> None:
+        """Entfernt den Cooldown-Zustand einer beendeten Session (Finding 15, Leak-Fix) —
+        ohne das würde `_last_fired_at_ms` über die Prozesslaufzeit unbegrenzt wachsen, weil
+        nie eine Session-ID entfernt wird. No-Op, wenn die Session nie gefeuert hat."""
+        self._last_fired_at_ms.pop(session_id, None)
+
+    def _in_cooldown(self, session_id: str, *, now: int | None = None) -> bool:
+        """Prüft NUR (mutiert nichts) — Vorbedingung, bevor überhaupt klassifiziert wird."""
+        now = self._clock() if now is None else now
+        last_fired_at = self._last_fired_at_ms.get(session_id)
+        return last_fired_at is not None and (now - last_fired_at) < self._cooldown_ms
+
     def _apply_cooldown(
         self, session_id: str, card_type: str | None, *, source: TriggerSource
     ) -> TriggerDecision:
         now = self._clock()
-        last_fired_at = self._last_fired_at_ms.get(session_id)
-        if last_fired_at is not None and (now - last_fired_at) < self._cooldown_ms:
+        if self._in_cooldown(session_id, now=now):
             return TriggerDecision(fire=False, card_type=None, source=source)
         self._last_fired_at_ms[session_id] = now
         return TriggerDecision(fire=True, card_type=card_type, source=source)

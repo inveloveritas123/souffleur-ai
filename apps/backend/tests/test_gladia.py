@@ -119,6 +119,23 @@ def test_constructor_rejects_non_eu_base_url() -> None:
         GladiaTranscriptionPort(settings, client=_FakeClient([], []))
 
 
+def test_constructor_rejects_lookalike_host_with_matching_prefix() -> None:
+    """`startswith("https://api.gladia.io")` würde einen Host akzeptieren, der nur textuell
+    mit dem erlaubten Präfix beginnt, aber ein anderer (Angreifer-kontrollierter) Host ist —
+    Gate E1, BLOCKER-Fix: exakter Host-Vergleich via `urlsplit(...).hostname`."""
+    settings = _settings(gladia_base_url="https://api.gladia.io.lookalike-host.example")
+
+    with pytest.raises(NonEuGladiaEndpointError):
+        GladiaTranscriptionPort(settings, client=_FakeClient([], []))
+
+
+def test_constructor_rejects_non_https_scheme() -> None:
+    settings = _settings(gladia_base_url="http://api.gladia.io")
+
+    with pytest.raises(NonEuGladiaEndpointError):
+        GladiaTranscriptionPort(settings, client=_FakeClient([], []))
+
+
 def test_capabilities_report_eu_residency_and_diarization_support() -> None:
     port = GladiaTranscriptionPort(_settings(), client=_FakeClient([], []))
 
@@ -247,6 +264,31 @@ async def test_transcribe_batch_rejects_non_eu_result_url(tmp_path: Any) -> None
         post_responses=[
             _FakeResponse({"audio_url": "https://api.gladia.io/files/abc.wav"}),
             _FakeResponse({"id": "job1", "result_url": "https://api.us.example.com/v2/transcription/job1"}),
+        ],
+        get_responses=[],
+    )
+    port = GladiaTranscriptionPort(_settings(), client=fake_client, poll_interval_s=0)
+
+    with pytest.raises(NonEuGladiaEndpointError):
+        await port.transcribe_batch(AudioRef(local_path=str(audio_path)), BatchOptions())
+
+
+@pytest.mark.asyncio
+async def test_transcribe_batch_rejects_lookalike_result_url(tmp_path: Any) -> None:
+    """Ein `result_url`, der nur textuell mit `https://api.gladia.io` beginnt, aber ein
+    anderer Host ist, muss ebenfalls abgelehnt werden (Präfix-Bypass, Gate E1, BLOCKER-Fix)."""
+    audio_path = tmp_path / "gespraech.wav"
+    audio_path.write_bytes(b"fake-bytes")
+
+    fake_client = _FakeClient(
+        post_responses=[
+            _FakeResponse({"audio_url": "https://api.gladia.io/files/abc.wav"}),
+            _FakeResponse(
+                {
+                    "id": "job1",
+                    "result_url": "https://api.gladia.io.lookalike-host.example/v2/transcription/job1",
+                }
+            ),
         ],
         get_responses=[],
     )

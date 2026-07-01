@@ -238,6 +238,58 @@ def test_cooldown_suppresses_second_trigger_within_window() -> None:
     assert third.fire is True  # Cooldown abgelaufen
 
 
+def test_cooldown_short_circuits_before_llm_classify_call() -> None:
+    """Finding 12 (Trigger-Kosten vor Cooldown): der Cooldown-Check muss VOR dem bezahlten
+    `ministral-3b`-classify-Aufruf greifen — vorher wurde bei UNCERTAIN immer zuerst
+    klassifiziert und der Cooldown erst danach geprüft, was während des Cooldown-Fensters
+    unnötige, bezahlte Modellaufrufe verursachte."""
+    clock = {"now": 0}
+    llm = FakeLlmPort(classify_label="objection")
+    router = TriggerRouter(llm, _settings(), cooldown_ms=5000, clock=lambda: clock["now"])
+
+    # 1) Regel-Treffer setzt den Cooldown.
+    first = asyncio.run(
+        router.decide(session_id="s1", tenant_id="zukunftsbund", text="Das ist mir zu teuer.")
+    )
+    assert first.fire is True
+    assert llm.classify_calls == []
+
+    # 2) Innerhalb des Cooldown-Fensters: ein UNCERTAIN-Segment darf NICHT mehr klassifiziert
+    # werden — der Cooldown muss den teuren Modellaufruf verhindern, nicht erst danach greifen.
+    clock["now"] = 1000
+    second = asyncio.run(
+        router.decide(session_id="s1", tenant_id="zukunftsbund", text=_uncertain_text())
+    )
+    assert second.fire is False
+    assert llm.classify_calls == []  # kein bezahlter Aufruf während des Cooldowns
+
+    # 3) Nach Ablauf des Cooldowns wird wieder klassifiziert.
+    clock["now"] = 6001
+    third = asyncio.run(
+        router.decide(session_id="s1", tenant_id="zukunftsbund", text=_uncertain_text())
+    )
+    assert len(llm.classify_calls) == 1
+    assert third.fire is True
+    assert third.card_type == "objection"
+
+
+def test_forget_session_removes_cooldown_state_leak() -> None:
+    """Finding 15 (Leak): `_last_fired_at_ms` wächst unbegrenzt über die Prozesslaufzeit, wenn
+    Einträge nach Session-Ende nie entfernt werden. `forget_session` räumt den Eintrag auf —
+    danach verhält sich die Session wie eine brandneue (kein Rest-Cooldown)."""
+    clock = {"now": 0}
+    router = TriggerRouter(FakeLlmPort(), _settings(), cooldown_ms=5000, clock=lambda: clock["now"])
+
+    asyncio.run(router.decide(session_id="s1", tenant_id="zukunftsbund", text="Das ist mir zu teuer."))
+    assert "s1" in router._last_fired_at_ms  # noqa: SLF001 - internen Zustand für den Leak-Test prüfen
+
+    router.forget_session("s1")
+
+    assert "s1" not in router._last_fired_at_ms  # noqa: SLF001
+    # forget_session auf einer unbekannten/bereits vergessenen Session darf nicht crashen.
+    router.forget_session("does-not-exist")
+
+
 def test_cooldown_is_independent_per_session() -> None:
     clock = {"now": 0}
     router = TriggerRouter(

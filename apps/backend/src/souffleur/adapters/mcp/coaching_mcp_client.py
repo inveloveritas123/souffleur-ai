@@ -15,6 +15,7 @@ gemockt, um Tests deterministisch und schnell zu halten).
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import sys
 from collections.abc import Awaitable, Callable, Sequence
@@ -22,6 +23,12 @@ from typing import Any, Protocol
 
 DEFAULT_MCP_COMMAND: tuple[str, ...] = (sys.executable, "-m", "coaching_mcp")
 TOOL_NAME_GET_COACHING_KNOWLEDGE = "get_coaching_knowledge"
+
+# Finding 11 (MCP-Deadlock) / Finding 16 (MCP aclose ohne kill): ohne Timeouts kann ein
+# nicht mehr antwortender Coaching-MCP-Subprozess die Session (Request unter gehaltenem Lock)
+# bzw. den App-Shutdown (aclose -> process.wait()) für immer blockieren.
+DEFAULT_REQUEST_TIMEOUT_S = 10.0
+DEFAULT_CLOSE_TIMEOUT_S = 5.0
 
 
 class CoachingMcpError(RuntimeError):
@@ -43,6 +50,7 @@ class _ProcessLike(Protocol):
     stdout: _StdoutLike | None
 
     async def wait(self) -> int: ...
+    def kill(self) -> None: ...
 
 
 ProcessFactory = Callable[[], Awaitable[_ProcessLike]]
@@ -57,6 +65,8 @@ class CoachingMcpStdioClient:
         cwd: str | None = None,
         env: dict[str, str] | None = None,
         process_factory: ProcessFactory | None = None,
+        request_timeout_s: float = DEFAULT_REQUEST_TIMEOUT_S,
+        close_timeout_s: float = DEFAULT_CLOSE_TIMEOUT_S,
     ) -> None:
         self._command = tuple(command) if command else DEFAULT_MCP_COMMAND
         self._cwd = cwd
@@ -64,6 +74,8 @@ class CoachingMcpStdioClient:
         self._process_factory: ProcessFactory = process_factory or self._spawn_subprocess
         self._process: _ProcessLike | None = None
         self._next_id = 1
+        self._request_timeout_s = request_timeout_s
+        self._close_timeout_s = close_timeout_s
         # Lazy statt in __init__: `asyncio.Lock()` bindet sich unter Python 3.9 sofort an die
         # zum Konstruktionszeitpunkt "aktuelle" Event-Loop — die kann zur Konstruktionszeit
         # (z. B. App-Start außerhalb eines laufenden Loops) noch gar nicht existieren.
@@ -100,7 +112,17 @@ class CoachingMcpStdioClient:
             )
             stdin.write((line + "\n").encode("utf-8"))
             await stdin.drain()
-            raw = await stdout.readline()
+            # Finding 11 (MCP-Deadlock): `stdout.readline()` OHNE Timeout unter gehaltenem Lock
+            # kann die Session für immer blockieren, wenn der Coaching-MCP-Server nie antwortet
+            # (z. B. abgestürzt, aber Pipe noch offen) — JEDER nachfolgende Aufruf würde ewig auf
+            # denselben Lock warten. `wait_for` erzwingt eine Obergrenze.
+            try:
+                raw = await asyncio.wait_for(stdout.readline(), timeout=self._request_timeout_s)
+            except asyncio.TimeoutError as exc:
+                raise CoachingMcpError(
+                    f"Coaching-MCP-Server hat nach {self._request_timeout_s}s nicht auf "
+                    f"'{method}' geantwortet (Deadlock-Schutz)"
+                ) from exc
 
         if not raw:
             raise CoachingMcpError("Coaching-MCP-Server hat die Verbindung ohne Antwort beendet")
@@ -131,10 +153,21 @@ class CoachingMcpStdioClient:
         return parsed
 
     async def aclose(self) -> None:
-        """Beendet den Subprozess (falls gestartet). Kein-Op, wenn nie gestartet."""
+        """Beendet den Subprozess (falls gestartet). Kein-Op, wenn nie gestartet.
+
+        Finding 16 (MCP aclose ohne kill): `await process.wait()` OHNE Timeout hängt für immer,
+        falls der Subprozess nach `stdin.close()` nicht selbst beendet (z. B. hängender
+        Tool-Aufruf, kaputter Shutdown-Pfad im Coaching-MCP-Server). `wait_for` erzwingt eine
+        Obergrenze; läuft sie ab, wird der Prozess hart beendet (`kill()`)."""
         if self._process is None:
             return
-        if self._process.stdin is not None:
-            self._process.stdin.close()
-        await self._process.wait()
+        process = self._process
         self._process = None
+        if process.stdin is not None:
+            process.stdin.close()
+        try:
+            await asyncio.wait_for(process.wait(), timeout=self._close_timeout_s)
+        except asyncio.TimeoutError:
+            process.kill()
+            with contextlib.suppress(Exception):
+                await process.wait()

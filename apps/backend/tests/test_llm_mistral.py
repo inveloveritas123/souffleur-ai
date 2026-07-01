@@ -137,6 +137,27 @@ def test_client_is_constructed_against_eu_base_url(monkeypatch: pytest.MonkeyPat
     assert captured["api_key"] == "test-key"
 
 
+def test_aclose_closes_underlying_async_http_client() -> None:
+    """Finding 15 (Leak): der `Mistral`-Client wurde nie geschlossen — `aclose()` muss den
+    darunterliegenden `httpx.AsyncClient` (`sdk_configuration.async_client`) schließen."""
+    async_http_client = AsyncMock()
+    sdk_configuration = SimpleNamespace(async_client=async_http_client)
+    client = SimpleNamespace(chat=SimpleNamespace(), sdk_configuration=sdk_configuration)
+    adapter = MistralLlmAdapter(_settings(), client=client)
+
+    asyncio.run(adapter.aclose())
+
+    async_http_client.aclose.assert_awaited_once()
+
+
+def test_aclose_is_a_noop_when_client_exposes_no_sdk_configuration() -> None:
+    """Fail-safe: ein Test-Double ohne `sdk_configuration` darf `aclose()` nicht crashen."""
+    client = SimpleNamespace(chat=SimpleNamespace())
+    adapter = MistralLlmAdapter(_settings(), client=client)
+
+    asyncio.run(adapter.aclose())  # darf keine Exception werfen
+
+
 def test_stream_reasoning_handles_empty_or_none_delta_content() -> None:
     """Robust gegen Chunks ohne Text (z. B. nur role-Delta am Stream-Anfang)."""
     client = SimpleNamespace(chat=SimpleNamespace())

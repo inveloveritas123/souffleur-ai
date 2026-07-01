@@ -29,6 +29,7 @@ from __future__ import annotations
 import os
 from collections.abc import AsyncIterator
 from typing import Any
+from urllib.parse import urlsplit
 
 import httpx
 
@@ -45,7 +46,7 @@ from souffleur.ports.types import (
 )
 
 # Einziger zulässiger Gladia-Endpunkt (EU, Frankreich) — Gate E1.
-_ALLOWED_GLADIA_HOST_PREFIX = "https://api.gladia.io"
+_ALLOWED_GLADIA_HOST = "api.gladia.io"
 
 # Gladia hat kein gepinntes "Modell" wie Mistral (Single-Provider-API); dieser
 # Bezeichner dokumentiert nur, welche API-Version dieser Adapter anspricht.
@@ -83,9 +84,17 @@ def _get(obj: Any, key: str, default: Any = None) -> Any:
 
 
 def _require_eu_host(url: str, *, what: str) -> None:
-    if not url.startswith(_ALLOWED_GLADIA_HOST_PREFIX):
+    """Exakter Host-Vergleich (kein Präfix-Vergleich) — Gate E1, BLOCKER-Fix.
+
+    `url.startswith("https://api.gladia.io")` würde `https://api.gladia.io.attacker.example`
+    fälschlich akzeptieren (der Angreifer-Host beginnt textuell mit dem erlaubten Präfix).
+    `urlsplit(...).hostname` liefert stattdessen den tatsächlichen Host, gegen den exakt
+    verglichen wird; zusätzlich wird `https` als Schema erzwungen (kein Downgrade).
+    """
+    parts = urlsplit(url)
+    if parts.scheme != "https" or parts.hostname != _ALLOWED_GLADIA_HOST:
         raise NonEuGladiaEndpointError(
-            f"{what} muss auf {_ALLOWED_GLADIA_HOST_PREFIX} (EU, Frankreich) zeigen, "
+            f"{what} muss auf https://{_ALLOWED_GLADIA_HOST} (EU, Frankreich) zeigen, "
             f"war: {url!r}"
         )
 

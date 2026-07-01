@@ -153,17 +153,45 @@ def test_three_routes_exist_and_no_websocket_route(tmp_path: Path) -> None:
 def test_post_consent_creates_consent_reference(tmp_path: Path) -> None:
     client, audit_log, _, _ = _build_client(tmp_path)
 
-    response = client.post("/api/v1/consent", json={"session_id": "session-1"})
+    response = client.post(
+        "/api/v1/consent",
+        json={"session_id": "session-1", "participant_acknowledged": True, "text_version": "v1.0"},
+    )
 
     assert response.status_code == 200
     body = response.json()
     assert "consent_ref" in body and body["consent_ref"]
     assert body["tenant_id"] == "zukunftsbund"
     assert body["session_id"] == "session-1"
+    assert body["text_version"] == "v1.0"
     assert "granted_at" in body
 
     audit_lines = _read_audit_lines(audit_log)
     assert any(line["action"] == "create" and line["routing_region"] == "EU" for line in audit_lines)
+
+
+def test_post_consent_without_participant_acknowledged_is_rejected(tmp_path: Path) -> None:
+    """Finding 3 (BLOCKER §201 StGB): ohne explizite Zustimmung keine Consent-Referenz."""
+    client, audit_log, _, _ = _build_client(tmp_path)
+
+    response = client.post(
+        "/api/v1/consent",
+        json={"session_id": "session-2", "participant_acknowledged": False, "text_version": "v1.0"},
+    )
+
+    assert response.status_code in (400, 403)
+
+    audit_lines = _read_audit_lines(audit_log)
+    assert any(line["result"] == "denied" for line in audit_lines)
+
+
+def test_post_consent_defaults_participant_acknowledged_to_false_and_rejects(tmp_path: Path) -> None:
+    """Fail-closed: fehlt `participant_acknowledged` komplett, wird NICHT stillschweigend erteilt."""
+    client, _, _, _ = _build_client(tmp_path)
+
+    response = client.post("/api/v1/consent", json={"session_id": "session-3"})
+
+    assert response.status_code in (400, 403)
 
 
 def test_post_protocol_without_consent_is_rejected_with_403(tmp_path: Path) -> None:
@@ -184,7 +212,10 @@ def test_post_protocol_without_consent_is_rejected_with_403(tmp_path: Path) -> N
 def test_post_protocol_with_valid_consent_returns_diarized_protocol(tmp_path: Path) -> None:
     client, audit_log, transcription_port, llm_port = _build_client(tmp_path)
 
-    consent_response = client.post("/api/v1/consent", json={"session_id": "session-42"})
+    consent_response = client.post(
+        "/api/v1/consent",
+        json={"session_id": "session-42", "participant_acknowledged": True, "text_version": "v1.0"},
+    )
     consent_ref = consent_response.json()["consent_ref"]
 
     response = client.post(
@@ -231,17 +262,34 @@ def test_post_protocol_with_valid_consent_returns_diarized_protocol(tmp_path: Pa
         assert "angespannt" not in json.dumps(line)
 
 
+def _create_consent(client: TestClient, **overrides: object) -> dict:
+    payload: dict[str, object] = {"participant_acknowledged": True, "text_version": "v1.0"}
+    payload.update(overrides)
+    response = client.post("/api/v1/consent", json=payload)
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
+def _create_protocol(client: TestClient, consent_ref: str, **overrides: str) -> dict:
+    data: dict[str, str] = {"consent_ref": consent_ref}
+    data.update(overrides)
+    response = client.post(
+        "/api/v1/protocol",
+        data=data,
+        files={"audio": ("audio.wav", b"fake-bytes", "audio/wav")},
+    )
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
 def test_get_protocol_by_id_returns_previously_created_protocol(tmp_path: Path) -> None:
     client, *_ = _build_client(tmp_path)
 
-    consent_ref = client.post("/api/v1/consent", json={}).json()["consent_ref"]
-    created = client.post(
-        "/api/v1/protocol",
-        data={"consent_ref": consent_ref},
-        files={"audio": ("audio.wav", b"fake-bytes", "audio/wav")},
-    ).json()
+    consent = _create_consent(client)
+    consent_ref = consent["consent_ref"]
+    created = _create_protocol(client, consent_ref)
 
-    fetched = client.get(f"/api/v1/protocol/{created['id']}")
+    fetched = client.get(f"/api/v1/protocol/{created['id']}", params={"consent_ref": consent_ref})
 
     assert fetched.status_code == 200
     assert fetched.json() == created
@@ -250,9 +298,71 @@ def test_get_protocol_by_id_returns_previously_created_protocol(tmp_path: Path) 
 def test_get_protocol_unknown_id_returns_404(tmp_path: Path) -> None:
     client, *_ = _build_client(tmp_path)
 
-    response = client.get("/api/v1/protocol/does-not-exist")
+    consent_ref = _create_consent(client)["consent_ref"]
+
+    response = client.get("/api/v1/protocol/does-not-exist", params={"consent_ref": consent_ref})
 
     assert response.status_code == 404
+
+
+def test_get_protocol_without_consent_ref_is_rejected(tmp_path: Path) -> None:
+    """Finding 2 (BLOCKER IDOR): ohne consent_ref kein Zugriff, auch nicht auf eine gültige ID."""
+    client, audit_log, *_ = _build_client(tmp_path)
+
+    consent_ref = _create_consent(client)["consent_ref"]
+    created = _create_protocol(client, consent_ref)
+
+    response = client.get(f"/api/v1/protocol/{created['id']}")
+
+    assert response.status_code == 403
+    assert "Wie geht es Ihnen" not in response.text
+
+
+def test_get_protocol_with_invalid_consent_ref_is_rejected(tmp_path: Path) -> None:
+    """Finding 2 (BLOCKER IDOR): eine unbekannte/fremde consent_ref wird abgelehnt."""
+    client, *_ = _build_client(tmp_path)
+
+    consent_ref = _create_consent(client)["consent_ref"]
+    created = _create_protocol(client, consent_ref)
+
+    response = client.get(
+        f"/api/v1/protocol/{created['id']}", params={"consent_ref": "not-a-real-consent-ref"}
+    )
+
+    assert response.status_code == 403
+
+
+def test_get_protocol_accepts_consent_ref_via_header(tmp_path: Path) -> None:
+    """`consent_ref` darf laut Finding 2 auch als Header übergeben werden."""
+    client, *_ = _build_client(tmp_path)
+
+    consent_ref = _create_consent(client)["consent_ref"]
+    created = _create_protocol(client, consent_ref)
+
+    response = client.get(f"/api/v1/protocol/{created['id']}", headers={"X-Consent-Ref": consent_ref})
+
+    assert response.status_code == 200
+    assert response.json() == created
+
+
+def test_get_protocol_cross_tenant_access_is_rejected(tmp_path: Path) -> None:
+    """Finding 2 (BLOCKER IDOR): eine gültige consent_ref eines ANDEREN Mandanten darf das
+    Protokoll eines fremden Mandanten nicht offenlegen — `store.get` muss nach `tenant_id`
+    gefiltert werden, selbst wenn die vorgelegte consent_ref für sich genommen gültig ist."""
+    client, *_ = _build_client(tmp_path)
+
+    consent_a = _create_consent(client, tenant_id="tenant-a", session_id="session-a")
+    protocol_a = _create_protocol(client, consent_a["consent_ref"], tenant_id="tenant-a")
+
+    consent_b = _create_consent(client, tenant_id="tenant-b", session_id="session-b")
+
+    response = client.get(
+        f"/api/v1/protocol/{protocol_a['id']}",
+        params={"consent_ref": consent_b["consent_ref"], "tenant_id": "tenant-b"},
+    )
+
+    assert response.status_code in (403, 404)
+    assert "Wie geht es Ihnen" not in response.text
 
 
 def test_app_module_level_instance_has_no_websocket_route() -> None:

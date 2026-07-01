@@ -45,6 +45,7 @@ Feld (Mono-Session), wird der ehrliche Fallback `"unknown"` verwendet.
 """
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import json
 import os
@@ -205,8 +206,11 @@ class VoxtralApiTranscriptionPort:
                 "voxtral_api.transcribe_batch benötigt AudioRef.local_path (Batch-Datei)"
             )
 
-        with open(audio.local_path, "rb") as handle:
-            content = handle.read()
+        # Finding 13 (Sync-Read auf async Pfad): ein direkter `open(...).read()` hier würde den
+        # Event-Loop-Thread für die Dauer des Datei-I/O blockieren (andere Coroutinen/Sessions
+        # der App stehen währenddessen still). `asyncio.to_thread` lagert den blockierenden Read
+        # in einen Worker-Thread aus.
+        content = await asyncio.to_thread(self._read_audio_file, audio.local_path)
         file_name = os.path.basename(audio.local_path)
 
         url = f"{self._settings.mistral_base_url}{REST_TRANSCRIPTIONS_PATH}"
@@ -238,6 +242,13 @@ class VoxtralApiTranscriptionPort:
             typical_final_latency_ms=300,
             residency="EU",
         )
+
+    @staticmethod
+    def _read_audio_file(local_path: str) -> bytes:
+        """Blockierender Datei-Read — wird über `asyncio.to_thread` aufgerufen (Finding 13),
+        nie direkt im Event-Loop-Thread."""
+        with open(local_path, "rb") as handle:
+            return handle.read()
 
     # --- Interna: Live-Streaming ----------------------------------------------------
 

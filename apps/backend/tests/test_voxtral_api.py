@@ -183,6 +183,38 @@ def test_transcribe_batch_falls_back_to_single_speaker_without_speaker_id(tmp_pa
     assert result.duration_ms == 3000
 
 
+def test_transcribe_batch_reads_audio_file_off_the_event_loop(
+    tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Finding 13 (Sync-Read auf async Pfad): `open(local_path, 'rb').read()` direkt in
+    `transcribe_batch` blockiert den Event-Loop-Thread während des Datei-I/O. Der Fix muss den
+    Read über `asyncio.to_thread` (oder gleichwertig) in einen Worker-Thread auslagern."""
+    audio_path = tmp_path / "gespraech.wav"
+    audio_path.write_bytes(b"fake-bytes-for-thread-offload")
+
+    client = _fake_http_client(_diarized_payload())
+    port = VoxtralApiTranscriptionPort(_settings(), http_client=client)
+
+    real_to_thread = asyncio.to_thread
+    calls: list[tuple[Any, ...]] = []
+
+    async def spy_to_thread(func: Any, *args: Any, **kwargs: Any) -> Any:
+        calls.append((func, args, kwargs))
+        return await real_to_thread(func, *args, **kwargs)
+
+    monkeypatch.setattr("souffleur.adapters.stt.voxtral_api.asyncio.to_thread", spy_to_thread)
+
+    asyncio.run(port.transcribe_batch(AudioRef(local_path=str(audio_path)), BatchOptions()))
+
+    assert len(calls) == 1, "Datei-Read muss genau einmal über asyncio.to_thread laufen"
+    _func, args, _kwargs = calls[0]
+    assert str(audio_path) in args
+
+    # Der tatsächliche Datei-Inhalt muss unverändert an den REST-Call gehen (kein Verhaltensbruch).
+    _, kwargs = client.post.call_args
+    assert kwargs["files"]["file"][1] == b"fake-bytes-for-thread-offload"
+
+
 def test_transcribe_batch_requires_local_path() -> None:
     port = VoxtralApiTranscriptionPort(_settings(), http_client=_fake_http_client(_diarized_payload()))
 

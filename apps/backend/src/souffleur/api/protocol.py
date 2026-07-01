@@ -26,7 +26,7 @@ import threading
 import uuid
 from dataclasses import dataclass, field
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, Header, HTTPException, Query, UploadFile
 from pydantic import BaseModel
 
 from souffleur.audit.audit_log import AuditLog
@@ -42,12 +42,20 @@ from souffleur.ports.types import AudioRef, BatchOptions, TranscriptResult
 class ConsentRequest(BaseModel):
     tenant_id: str | None = None
     session_id: str | None = None
+    # Finding 3 (BLOCKER §201 StGB): die Web-Schicht sendet beide Felder — bislang wurden sie
+    # vom Backend ignoriert, wodurch eine explizit VERWEIGERTE Einwilligung stillschweigend als
+    # erteilt behandelt wurde. `participant_acknowledged` defaultet fail-closed auf False (kein
+    # implizites Consent, auch wenn das Feld fehlt); `text_version` dokumentiert, welche Version
+    # des Einwilligungstexts bestätigt wurde.
+    participant_acknowledged: bool = False
+    text_version: str | None = None
 
 
 class ConsentResponse(BaseModel):
     consent_ref: str
     tenant_id: str
     session_id: str
+    text_version: str | None = None
     granted_at: str
 
 
@@ -93,9 +101,14 @@ class ProtocolStore:
         with self._lock:
             self._records[record.id] = record
 
-    def get(self, protocol_id: str) -> ProtocolResponse | None:
+    def get(self, protocol_id: str, *, tenant_id: str) -> ProtocolResponse | None:
+        """Liefert ein Protokoll NUR, wenn es zum angegebenen `tenant_id` gehört (Finding 2,
+        BLOCKER IDOR: Mandantentrennung, Gate E3) — sonst `None` (wie "nicht gefunden")."""
         with self._lock:
-            return self._records.get(protocol_id)
+            record = self._records.get(protocol_id)
+        if record is None or record.tenant_id != tenant_id:
+            return None
+        return record
 
 
 # --- Dependencies-Bündel (von core/app.py verdrahtet; Tests übergeben Fakes) ----------
@@ -136,6 +149,23 @@ def build_protocol_router(deps: ProtocolDeps) -> APIRouter:
     def create_consent(payload: ConsentRequest) -> ConsentResponse:
         tenant_id = payload.tenant_id or deps.settings.tenant_id
         session_id = payload.session_id or str(uuid.uuid4())
+
+        # Finding 3 (BLOCKER §201 StGB): eine explizit verweigerte (oder fehlende) Zustimmung
+        # darf NIE eine gültige Consent-Referenz erzeugen — vorher wurde `participant_acknowledged`
+        # komplett ignoriert.
+        if not payload.participant_acknowledged:
+            deps.audit_log.record(
+                actor="api:consent",
+                action="create",
+                resource=f"consent:{session_id}",
+                tenant_id=tenant_id,
+                result="denied",
+            )
+            raise HTTPException(
+                status_code=400,
+                detail="participant_acknowledged muss true sein (§201 StGB) — Einwilligung nicht erteilt",
+            )
+
         consent_ref = str(uuid.uuid4())
         granted_at = _now_iso()
 
@@ -145,6 +175,7 @@ def build_protocol_router(deps: ProtocolDeps) -> APIRouter:
                 tenant_id=tenant_id,
                 session_id=session_id,
                 granted_at=granted_at,
+                text_version=payload.text_version,
             )
         )
         deps.audit_log.record(
@@ -159,6 +190,7 @@ def build_protocol_router(deps: ProtocolDeps) -> APIRouter:
             consent_ref=consent_ref,
             tenant_id=tenant_id,
             session_id=session_id,
+            text_version=payload.text_version,
             granted_at=granted_at,
         )
 
@@ -262,10 +294,32 @@ def build_protocol_router(deps: ProtocolDeps) -> APIRouter:
         return response
 
     @router.get("/protocol/{protocol_id}", response_model=ProtocolResponse)
-    def get_protocol(protocol_id: str) -> ProtocolResponse:
-        record = deps.store.get(protocol_id)
-        if record is None:
+    def get_protocol(
+        protocol_id: str,
+        consent_ref: str | None = Query(None),
+        tenant_id: str | None = Query(None),
+        x_consent_ref: str | None = Header(None, alias="X-Consent-Ref"),
+    ) -> ProtocolResponse:
+        # Finding 2 (BLOCKER IDOR): früher kein Consent-/Tenant-Check — jede/r mit einer
+        # Protokoll-ID konnte das Klartext-Transkript eines fremden Mandanten lesen.
+        # `consent_ref` ist jetzt Pflicht (Query ODER Header) und wird über das ConsentGate
+        # geprüft (ConsentDeniedError -> 403 via globalem Handler, core/app.py); zusätzlich
+        # filtert `store.get` streng nach dem aus dem Consent-Eintrag resultierenden `tenant_id`.
+        effective_tenant_id = tenant_id or deps.settings.tenant_id
+        effective_consent_ref = consent_ref or x_consent_ref
+
+        record = deps.consent_gate.check(consent_ref=effective_consent_ref, tenant_id=effective_tenant_id)
+
+        stored = deps.store.get(protocol_id, tenant_id=record.tenant_id)
+        if stored is None:
+            deps.audit_log.record(
+                actor="api:protocol",
+                action="read",
+                resource=f"protocol:{protocol_id}",
+                tenant_id=effective_tenant_id,
+                result="denied",
+            )
             raise HTTPException(status_code=404, detail="Protokoll nicht gefunden")
-        return record
+        return stored
 
     return router

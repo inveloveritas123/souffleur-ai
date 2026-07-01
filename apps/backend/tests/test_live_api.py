@@ -258,6 +258,60 @@ def test_live_ws_accepts_audio_after_consent_and_forwards_transcript_and_card_ev
     assert all(e["routing_region"] == "EU" for e in entries)
 
 
+def test_live_ws_forgets_trigger_cooldown_state_when_session_closes(tmp_path: Any) -> None:
+    """Finding 15 (Leak): `TriggerRouter._last_fired_at_ms` darf nach Session-Ende keinen
+    Eintrag mehr für die beendete Session halten — sonst wächst das Dict unbegrenzt über die
+    Prozesslaufzeit (jede Live-Session, die je eine Karte ausgelöst hat, bliebe für immer drin)."""
+    audit_log = AuditLog(str(tmp_path / "audit.jsonl"))
+    settings = _settings()
+    bus = InProcessTranscriptEventBus()
+    consent_gate = ConsentGate()
+    consent_gate.register(
+        ConsentRecord(
+            consent_ref="consent-1", tenant_id="zukunftsbund", session_id="s1", granted_at="2026-07-01T00:00:00Z"
+        )
+    )
+    transcript_events = [
+        TranscriptEvent(
+            kind="final", speaker="counterpart", text="Das Budget ist zu hoch.", t_start_ms=0, t_end_ms=900
+        )
+    ]
+    transcription_port = FakeTranscriptionPort(transcript_events, event_bus=bus)
+    trigger_router = TriggerRouter(FakeLlmPort(), settings)  # "zu hoch" -> Regel-Fast-Path: objection
+    reasoning_engine = ReasoningEngine(FakeLlmPort(), FakeMcpClient(), bus, settings, audit_log=audit_log)
+
+    deps = LiveDeps(
+        settings=settings,
+        transcription_port=transcription_port,
+        consent_gate=consent_gate,
+        audit_log=audit_log,
+        event_bus=bus,
+        trigger_router=trigger_router,
+        reasoning_engine=reasoning_engine,
+    )
+    app = _build_app(deps)
+    client = TestClient(app)
+
+    with client.websocket_connect(LIVE_WS_PATH) as ws:
+        ws.send_text(
+            json.dumps(
+                {
+                    "type": "start",
+                    "tenant_id": "zukunftsbund",
+                    "session_id": "s1",
+                    "consent_ref": "consent-1",
+                    "sample_rate": 16000,
+                }
+            )
+        )
+        ws.send_text(json.dumps({"type": "stop"}))
+        _drain_messages(ws)
+
+    # Der Trigger tatsächlich gefeuert zu haben, ist Voraussetzung dafür, dass dieser Test
+    # den Leak überhaupt beobachten könnte (sonst gäbe es nie einen Eintrag).
+    assert "s1" not in trigger_router._last_fired_at_ms  # noqa: SLF001 - Leak-Test, interner Zustand
+
+
 def test_live_ws_rejects_missing_consent_ref_entirely(tmp_path: Any) -> None:
     """`consent_ref` fehlt komplett in der Start-Nachricht — auch das ist eine Ablehnung."""
     audit_log = AuditLog(str(tmp_path / "audit.jsonl"))
@@ -282,6 +336,103 @@ def test_live_ws_rejects_missing_consent_ref_entirely(tmp_path: Any) -> None:
 
     assert response["type"] == "error"
     assert transcription_port.opened_sessions == []
+
+
+class _FlakyOnceLlmPort:
+    """`classify` wirft beim ERSTEN Aufruf (simuliert einen einmaligen Trigger-/LLM-Fehler),
+    danach klassifiziert es normal weiter — für Finding 9 (Live-Pipeline stirbt still)."""
+
+    def __init__(self) -> None:
+        self.classify_calls = 0
+
+    async def classify(self, messages: list[ChatMessage]) -> ClassificationResult:
+        self.classify_calls += 1
+        if self.classify_calls == 1:
+            raise RuntimeError("boom - ministral-3b-Klassifikation vorübergehend fehlgeschlagen")
+        return ClassificationResult(label="objection", raw_text="objection", model="ministral-3b-2512")
+
+    async def stream_reasoning(self, messages: list[ChatMessage]) -> AsyncIterator[str]:
+        for chunk in ("Karte", " bauen."):
+            yield chunk
+
+
+def test_live_ws_survives_single_trigger_error_and_keeps_processing_later_segments(
+    tmp_path: Any,
+) -> None:
+    """Finding 9 (Live-Pipeline stirbt still): früher umschloss `contextlib.suppress(Exception)`
+    die GANZE `async for`-Schleife über STT-Events — ein einzelner Fehler (hier: der erste
+    `ministral-3b`-Klassifikationsversuch) beendete die Schleife komplett und STILL; alle
+    folgenden Segmente der Session wurden nie mehr verarbeitet. Der Fix fängt Fehler PRO
+    Iteration — das erste (unsichere, nicht regelbasierte) Segment scheitert, das zweite muss
+    trotzdem noch eine Karte auslösen."""
+    audit_log = AuditLog(str(tmp_path / "audit.jsonl"))
+    settings = _settings()
+    bus = InProcessTranscriptEventBus()
+    consent_gate = ConsentGate()
+    consent_gate.register(
+        ConsentRecord(
+            consent_ref="consent-1", tenant_id="zukunftsbund", session_id="s1", granted_at="2026-07-01T00:00:00Z"
+        )
+    )
+    # Beide Texte sind absichtlich UNCERTAIN im Regel-Vorfilter (kein "?", kein Einwand-Marker,
+    # keine lange Stille) — nur so ruft der TriggerRouter tatsächlich `classify` auf.
+    transcript_events = [
+        TranscriptEvent(
+            kind="final",
+            speaker="counterpart",
+            text="Wir haben letzte Woche über die neuen Ziele fürs Team gesprochen und Notizen gemacht.",
+            t_start_ms=0,
+            t_end_ms=900,
+        ),
+        TranscriptEvent(
+            kind="final",
+            speaker="counterpart",
+            text="Lassen Sie uns die Roadmap fuer das naechste Quartal gemeinsam durchgehen und Notizen dazu machen.",
+            t_start_ms=900,
+            t_end_ms=1800,
+        ),
+    ]
+    transcription_port = FakeTranscriptionPort(transcript_events, event_bus=bus)
+    flaky_llm = _FlakyOnceLlmPort()
+    trigger_router = TriggerRouter(flaky_llm, settings, cooldown_ms=0)
+    reasoning_engine = ReasoningEngine(flaky_llm, FakeMcpClient(), bus, settings, audit_log=audit_log)
+
+    deps = LiveDeps(
+        settings=settings,
+        transcription_port=transcription_port,
+        consent_gate=consent_gate,
+        audit_log=audit_log,
+        event_bus=bus,
+        trigger_router=trigger_router,
+        reasoning_engine=reasoning_engine,
+    )
+    app = _build_app(deps)
+    client = TestClient(app)
+
+    with client.websocket_connect(LIVE_WS_PATH) as ws:
+        ws.send_text(
+            json.dumps(
+                {
+                    "type": "start",
+                    "tenant_id": "zukunftsbund",
+                    "session_id": "s1",
+                    "consent_ref": "consent-1",
+                    "sample_rate": 16000,
+                }
+            )
+        )
+        ws.send_text(json.dumps({"type": "stop"}))
+        messages = _drain_messages(ws)
+
+    event_types = [m["type"] for m in messages]
+
+    # Trotz des ersten (gescheiterten) Klassifikationsversuchs: die Session läuft normal zu
+    # Ende (kein Hang, kein Abbruch) UND das zweite Segment löst noch eine Karte aus.
+    assert flaky_llm.classify_calls == 2  # beide Segmente wurden versucht, keines übersprungen
+    assert "trigger.fired" in event_types
+    assert "card.streamed" in event_types
+    assert "card.proposed" in event_types
+    assert "session.closed" in event_types
 
 
 def test_live_ws_does_not_break_phase_1_rest_router(tmp_path: Any) -> None:
