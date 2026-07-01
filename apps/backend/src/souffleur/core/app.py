@@ -15,12 +15,11 @@ Welle 6 bleiben unverändert (kein Override, kein Pfad-Konflikt: `/api/v1/*` vs.
 from __future__ import annotations
 
 import logging
+import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
-
-import os
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware

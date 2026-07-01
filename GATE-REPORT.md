@@ -1,4 +1,4 @@
-# GATE-REPORT — target=`.` — 2026-07-01T15:13:23Z
+# GATE-REPORT — target=`.` — 2026-07-01T15:13:41Z
 
 ## Zusammenfassung
 - **Ergebnis:** ROT
@@ -12,7 +12,7 @@
 > **Hartes Gruen:** GRUEN gilt NUR, wenn alle 17 Pflicht-Gates aktiv bestanden sind. SKIP eines Pflicht-Gates (Tool fehlt / kein Check / kein Kontext) ⇒ UNGEDECKT ⇒ ROT.
 
 ## Warum ROT — Pflicht-Gates ohne PASS
-- **B1 VERLETZT** — ruff meldet Befunde: [*] 1 fixable with the `--fix` option.
+- **B1 VERLETZT** — ruff meldet Befunde: Found 14 errors.
 - **B3 UNGEDECKT** (nicht gelaufen) — 
 - **D3 UNGEDECKT** (nicht gelaufen) — 
 - **F1 UNGEDECKT** (nicht gelaufen) — 
@@ -34,7 +34,7 @@
 | 1_spec | A2 | block,deterministic,★pflicht | PASS | 10 testbare Akzeptanzkriterien |
 | 1_spec | A3 | block,deterministic,★pflicht | PASS | Handoff PM→Architect erfüllt |
 | 1_spec | A4 | warn,llm | SKIP | kein BMAD-QA-Nachweis (.werkbank/qa-evidence.json) |
-| 2_static | B1 | block,deterministic,★pflicht | FAIL | ruff meldet Befunde: [*] 1 fixable with the `--fix` option. |
+| 2_static | B1 | block,deterministic,★pflicht | FAIL | ruff meldet Befunde: Found 14 errors. |
 | 2_static | — | — | ABBRUCH | Stufe nach Block-FAIL abgebrochen (fail_fast) |
 
 ## Block-Regel
