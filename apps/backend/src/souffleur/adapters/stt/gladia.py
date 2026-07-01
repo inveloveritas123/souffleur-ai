@@ -112,7 +112,9 @@ class GladiaTranscriptionPort:
     ) -> None:
         _require_eu_host(settings.gladia_base_url, what="GLADIA_BASE_URL")
         self._settings = settings
-        self._client = client or httpx.AsyncClient(base_url=settings.gladia_base_url)
+        self._client = client or httpx.AsyncClient(
+            base_url=settings.gladia_base_url, timeout=30.0
+        )
         self._poll_interval_s = poll_interval_s
         self._max_polls = max_polls
 
