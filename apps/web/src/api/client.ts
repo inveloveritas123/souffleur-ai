@@ -110,10 +110,15 @@ export async function uploadAudioForProtocol(
   return protocolFromWire(wireResponse);
 }
 
-/** Schritt 3: ein zuvor erzeugtes Protokoll erneut laden (z. B. nach Reload). */
-export async function getProtocol(protocolId: string): Promise<ProtocolResult> {
+/**
+ * Schritt 3: ein zuvor erzeugtes Protokoll erneut laden (z. B. nach Reload).
+ * Das Backend verlangt hierfür den `consent_ref` als Query-Param (Nachweis
+ * der dokumentierten Einwilligung auch beim erneuten Abruf).
+ */
+export async function getProtocol(protocolId: string, consentRef: string): Promise<ProtocolResult> {
+  const query = new URLSearchParams({ consent_ref: consentRef });
   const wireResponse = await requestJson<WireProtocolResult>(
-    `/api/v1/protocol/${encodeURIComponent(protocolId)}`,
+    `/api/v1/protocol/${encodeURIComponent(protocolId)}?${query.toString()}`,
     { method: "GET" },
   );
   return protocolFromWire(wireResponse);

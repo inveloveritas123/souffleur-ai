@@ -74,7 +74,7 @@ test.describe("Phase-1-Flow (Consent → Upload → Protokoll)", () => {
     await page.getByTestId("export-markdown-button").click();
     const download = await downloadPromise;
 
-    expect(download.suggestedFilename()).toBe(`${MOCK_PROTOCOL.protocol_id}.md`);
+    expect(download.suggestedFilename()).toBe(`${MOCK_PROTOCOL.id}.md`);
   });
 
   test("Protokoll-Export als PDF ist auslösbar (Druckansicht öffnet sich)", async ({ page }) => {
@@ -92,7 +92,7 @@ test.describe("Phase-1-Flow (Consent → Upload → Protokoll)", () => {
     const popup = await popupPromise;
     await popup.waitForLoadState();
 
-    await expect(popup).toHaveTitle(new RegExp(MOCK_PROTOCOL.protocol_id));
+    await expect(popup).toHaveTitle(new RegExp(MOCK_PROTOCOL.id));
     const printWasTriggered = await popup.evaluate(
       () => (window as unknown as { __printCalled: boolean }).__printCalled,
     );

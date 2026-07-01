@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ApiClientError, getProtocol } from "../api/client";
 import type { ProtocolResult } from "../api/types";
+import { useConsent } from "../state/ConsentContext";
 import { useProtocol } from "../state/ProtocolContext";
 
 function buildMarkdown(protocol: ProtocolResult): string {
@@ -60,6 +61,7 @@ function exportAsPdf(protocol: ProtocolResult): void {
 export function ProtocolView() {
   const { protocolId } = useParams<{ protocolId?: string }>();
   const { protocol: contextProtocol, setProtocol } = useProtocol();
+  const { consent } = useConsent();
   const [fetchedProtocol, setFetchedProtocol] = useState<ProtocolResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -69,9 +71,13 @@ export function ProtocolView() {
 
   useEffect(() => {
     if (!protocolId || contextProtocol?.protocolId === protocolId) return;
+    if (!consent?.consentRef) {
+      setError("Kein gültiger Einwilligungsnachweis vorhanden. Bitte Einwilligung erneut bestätigen.");
+      return;
+    }
     setIsLoading(true);
     setError(null);
-    getProtocol(protocolId)
+    getProtocol(protocolId, consent.consentRef)
       .then((result) => {
         setFetchedProtocol(result);
         setProtocol(result);
@@ -84,7 +90,7 @@ export function ProtocolView() {
         );
       })
       .finally(() => setIsLoading(false));
-  }, [protocolId, contextProtocol, setProtocol]);
+  }, [protocolId, contextProtocol, consent, setProtocol]);
 
   if (isLoading) {
     return (

@@ -12,7 +12,8 @@
 export interface ConsentRecord {
   consentRef: string;
   tenantId: string;
-  acceptedAt: string; // ISO-8601
+  sessionId?: string;
+  grantedAt: string; // ISO-8601
   textVersion: string;
 }
 
@@ -35,6 +36,7 @@ export interface TranscriptSegment {
 /** Ergebnis der Batch-Transkription (voxtral-mini-2602) plus Reasoning-Zusammenfassung. */
 export interface ProtocolResult {
   protocolId: string;
+  tenantId: string;
   sessionId: string;
   consentRef: string;
   createdAt: string; // ISO-8601

@@ -36,7 +36,7 @@ export function ConsentView() {
       {hasConsent && consent ? (
         <p role="status" data-testid="consent-success">
           Einwilligung dokumentiert ({consent.consentRef}) am{" "}
-          {new Date(consent.acceptedAt).toLocaleString("de-DE")}. Du kannst jetzt fortfahren.
+          {new Date(consent.grantedAt).toLocaleString("de-DE")}. Du kannst jetzt fortfahren.
         </p>
       ) : null}
 

@@ -8,6 +8,8 @@
  */
 
 export interface WireConsentRequest {
+  tenant_id?: string;
+  session_id?: string;
   participant_acknowledged: boolean;
   text_version: string;
 }
@@ -15,12 +17,13 @@ export interface WireConsentRequest {
 export interface WireConsentRecord {
   consent_ref: string;
   tenant_id: string;
-  accepted_at: string;
+  session_id: string;
   text_version: string;
+  granted_at: string;
 }
 
 export interface WireWord {
-  word: string;
+  text: string;
   t_start_ms: number;
   t_end_ms: number;
 }
@@ -34,18 +37,17 @@ export interface WireTranscriptSegment {
 }
 
 export interface WireProtocolResult {
-  protocol_id: string;
+  id: string;
+  tenant_id: string;
   session_id: string;
   consent_ref: string;
   created_at: string;
   duration_ms: number;
+  stt_model: string;
+  reasoning_model: string;
   speakers: string[];
   segments: WireTranscriptSegment[];
   summary: string;
-  model: {
-    stt: string;
-    reasoning: string;
-  };
 }
 
 export interface WireErrorBody {

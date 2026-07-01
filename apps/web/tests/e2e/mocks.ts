@@ -11,16 +11,20 @@ import type { BrowserContext, Page } from "@playwright/test";
 export const MOCK_CONSENT = {
   consent_ref: "consent-e2e-9f3a2b",
   tenant_id: "tenant-coach-demo",
-  accepted_at: "2026-07-01T09:00:00.000Z",
+  session_id: "session-e2e-1",
   text_version: "2026-07-01",
+  granted_at: "2026-07-01T09:00:00.000Z",
 };
 
 export const MOCK_PROTOCOL = {
-  protocol_id: "protocol-e2e-7c21",
+  id: "protocol-e2e-7c21",
+  tenant_id: "tenant-coach-demo",
   session_id: "session-e2e-1",
   consent_ref: MOCK_CONSENT.consent_ref,
   created_at: "2026-07-01T09:05:00.000Z",
   duration_ms: 184_000,
+  stt_model: "voxtral-mini-2602",
+  reasoning_model: "magistral-medium-2509",
   speakers: ["coach", "counterpart"],
   segments: [
     {
@@ -28,6 +32,10 @@ export const MOCK_PROTOCOL = {
       text: "Willkommen, lass uns über die Zielvereinbarung für dieses Quartal sprechen.",
       t_start_ms: 0,
       t_end_ms: 5200,
+      words: [
+        { text: "Willkommen,", t_start_ms: 0, t_end_ms: 620 },
+        { text: "lass", t_start_ms: 640, t_end_ms: 820 },
+      ],
     },
     {
       speaker: "counterpart",
@@ -45,10 +53,6 @@ export const MOCK_PROTOCOL = {
   summary:
     "Coach und Gesprächspartner einigen sich auf eine Priorisierung der laufenden Projekte als " +
     "zentrales Ziel für das Quartal; nächste Schritte werden in einem Folgetermin konkretisiert.",
-  model: {
-    stt: "voxtral-mini-2602",
-    reasoning: "magistral-medium-2509",
-  },
 };
 
 /** Schritt 1: POST /api/v1/consent erfolgreich beantworten. */
