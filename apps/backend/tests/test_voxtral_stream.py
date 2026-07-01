@@ -1,14 +1,27 @@
-"""Welle 12 — voxtral_api Live-Streaming (`open_stream`/`push_audio`/`events`/`close_stream`).
+"""Welle 12/Fix — voxtral_api Live-Streaming (`open_stream`/`push_audio`/`events`/`close_stream`).
 
 Die WS-Verbindung ist vollständig gemockt (`FakeWebSocket` unten) — kein echter Netzaufruf
-gegen `wss://api.mistral.ai` (Gate E1/E2). Siehe Modul-Docstring in `voxtral_api.py`
-"Abweichung/Annahme (dokumentiert)": das Roh-WS-JSON-Wireformat ist ein eigener, dokumentierter
-Kontrakt dieses Adapters (die SDK-seitige `audio.realtime`-Semantik ist verifiziert, das rohe
-Wireformat nicht) — dieser Test belegt genau diesen Kontrakt.
+gegen `wss://api.mistral.ai` (Gate E1/E2). Das hier gemockte Wireformat ist NICHT mehr eine
+Annahme, sondern das VERIFIZIERTE Format (siehe Modul-Docstring in `voxtral_api.py`
+"Live-Streaming"): ein eigenständiges Probe-Skript hat gegen den echten Endpunkt ein
+vollständiges deutsches Transkript zurückbekommen. Kernpunkte, die diese Tests belegen:
+
+- Handshake: `session.created` zuerst, dann sendet der Adapter `session.update`.
+- Audio geht als `{"type":"input_audio.append","audio":"<base64>"}` (JSON-Text), NICHT als
+  roher Binär-Frame.
+- Events heißen `transcription.text.delta` (partial, kein Zeitstempel vom Server),
+  `transcription.segment` (final, mit echten `start`/`end`/optionalem `speaker_id` —
+  laut Referenz-Schema real, in eigenen Probe-Läufen aber nie beobachtet, hier defensiv
+  getestet) und `transcription.done` (final, der tatsächlich beobachtete Pfad, ausgelöst durch
+  `input_audio.flush`/`input_audio.end`).
+- Kein `channel`-Feld existiert real — Live-Events tragen `speaker="unknown"`, außer
+  `transcription.segment` liefert ein reales `speaker_id`.
+- `close_stream` sendet `input_audio.flush` + `input_audio.end` (kein "session.end").
 """
 from __future__ import annotations
 
 import asyncio
+import base64
 import json
 from typing import Any
 from unittest.mock import AsyncMock
@@ -56,11 +69,25 @@ def _dual_source_session() -> SessionContext:
     )
 
 
+_SESSION_CREATED = {
+    "type": "session.created",
+    "session": {
+        "request_id": "ws-test-request-id",
+        "model": "voxtral-mini-transcribe-realtime-2602",
+        "audio_format": {"encoding": "pcm_s16le", "sample_rate": 16000},
+        "target_streaming_delay_ms": None,
+    },
+}
+
+
 class FakeWebSocket:
-    """Minimaler WS-Double: sammelt gesendete Frames, liefert vorgegebene Server-Nachrichten."""
+    """Minimaler WS-Double: sammelt gesendete Frames, liefert vorgegebene Server-Nachrichten
+    als fortlaufende Queue (KEIN Reset bei erneutem `__aiter__` — das entspricht einer echten
+    Websocket-Verbindung, bei der `open_stream` bereits eine Nachricht konsumiert, bevor
+    `events()` weiterliest)."""
 
     def __init__(self, server_messages: list[dict[str, Any]]) -> None:
-        self._server_messages = server_messages
+        self._queue: list[dict[str, Any]] = list(server_messages)
         self.sent: list[Any] = []
         self.closed = False
 
@@ -71,23 +98,24 @@ class FakeWebSocket:
         self.closed = True
 
     def __aiter__(self) -> FakeWebSocket:
-        self._iter = iter(self._server_messages)
         return self
 
     async def __anext__(self) -> str:
-        try:
-            message = next(self._iter)
-        except StopIteration as exc:
-            raise StopAsyncIteration from exc
-        return json.dumps(message)
+        if not self._queue:
+            raise StopAsyncIteration
+        return json.dumps(self._queue.pop(0))
+
+    @property
+    def sent_messages(self) -> list[dict[str, Any]]:
+        return [json.loads(m) for m in self.sent]
 
 
 def _ws_connect_factory(fake_ws: FakeWebSocket) -> AsyncMock:
     return AsyncMock(return_value=fake_ws)
 
 
-def test_open_stream_connects_to_eu_wss_endpoint_with_live_model() -> None:
-    fake_ws = FakeWebSocket([])
+def test_open_stream_connects_to_eu_wss_endpoint_with_live_model_and_completes_handshake() -> None:
+    fake_ws = FakeWebSocket([_SESSION_CREATED])
     connect = _ws_connect_factory(fake_ws)
     port = VoxtralApiTranscriptionPort(_settings(), ws_connect=connect)
 
@@ -97,14 +125,38 @@ def test_open_stream_connects_to_eu_wss_endpoint_with_live_model() -> None:
     connect.assert_awaited_once()
     args, kwargs = connect.call_args
     url = args[0]
-    assert url.startswith("wss://api.mistral.ai")
-    assert "model=voxtral-mini-transcribe-realtime-2602" in url
-    assert "channels=2" in url
+    assert url == "wss://api.mistral.ai/v1/audio/transcriptions/realtime?model=voxtral-mini-transcribe-realtime-2602"
     assert kwargs["additional_headers"]["Authorization"] == "Bearer test-key"
 
+    # VERIFIZIERT: nach session.created sendet der Adapter session.update mit dem echten
+    # Audioformat (encoding/sample_rate), NICHT als Query-Parameter.
+    assert len(fake_ws.sent_messages) == 1
+    update = fake_ws.sent_messages[0]
+    assert update["type"] == "session.update"
+    assert update["session"]["audio_format"] == {"encoding": "pcm_s16le", "sample_rate": 16000}
+    assert update["session"]["target_streaming_delay_ms"] == 480
 
-def test_push_audio_sends_raw_pcm_bytes_over_the_websocket() -> None:
-    fake_ws = FakeWebSocket([])
+
+def test_open_stream_raises_if_first_message_is_not_session_created() -> None:
+    fake_ws = FakeWebSocket([{"type": "transcription.text.delta", "text": "zu früh"}])
+    port = VoxtralApiTranscriptionPort(_settings(), ws_connect=_ws_connect_factory(fake_ws))
+
+    with pytest.raises(VoxtralLiveStreamError):
+        asyncio.run(port.open_stream(_dual_source_session()))
+
+
+def test_open_stream_raises_on_realtime_error_during_handshake() -> None:
+    fake_ws = FakeWebSocket([{"type": "error", "error": {"message": "invalid model", "code": 1}}])
+    port = VoxtralApiTranscriptionPort(_settings(), ws_connect=_ws_connect_factory(fake_ws))
+
+    with pytest.raises(VoxtralLiveStreamError, match="invalid model"):
+        asyncio.run(port.open_stream(_dual_source_session()))
+
+
+def test_push_audio_sends_base64_json_input_audio_append_not_raw_bytes() -> None:
+    """VERIFIZIERT: ein roher Binär-Frame wird vom echten Server ignoriert (keine Antwort,
+    keine Transkription) — Audio muss als base64-JSON-Textnachricht gehen."""
+    fake_ws = FakeWebSocket([_SESSION_CREATED])
     port = VoxtralApiTranscriptionPort(_settings(), ws_connect=_ws_connect_factory(fake_ws))
 
     async def scenario() -> None:
@@ -113,19 +165,79 @@ def test_push_audio_sends_raw_pcm_bytes_over_the_websocket() -> None:
 
     asyncio.run(scenario())
 
-    assert fake_ws.sent == [b"\x00\x01\x02\x03"]
+    # sent[0] ist das session.update aus dem Handshake, sent[1] der Audio-Frame.
+    assert len(fake_ws.sent_messages) == 2
+    append = fake_ws.sent_messages[1]
+    assert append["type"] == "input_audio.append"
+    assert base64.b64decode(append["audio"]) == b"\x00\x01\x02\x03"
 
 
-def test_events_yields_partial_and_final_transcript_events() -> None:
+def test_push_audio_rejects_chunks_over_the_verified_server_limit() -> None:
+    fake_ws = FakeWebSocket([_SESSION_CREATED])
+    port = VoxtralApiTranscriptionPort(_settings(), ws_connect=_ws_connect_factory(fake_ws))
+    oversized_chunk = b"\x00" * (262144 + 1)
+
+    async def scenario() -> None:
+        handle = await port.open_stream(_dual_source_session())
+        await port.push_audio(handle, oversized_chunk)
+
+    with pytest.raises(VoxtralLiveStreamError):
+        asyncio.run(scenario())
+
+
+def test_events_yields_partial_deltas_and_final_done_event() -> None:
+    """VERIFIZIERT der tatsächlich beobachtete Live-Pfad: text.delta (partial, kein
+    Zeitstempel vom Server) gefolgt von transcription.done (final, ausgelöst durch
+    flush/end) nach echtem Probe-Lauf gegen wss://api.mistral.ai."""
     server_messages: list[dict[str, Any]] = [
-        {"type": "session.created"},
-        {"type": "transcript.delta", "text": "Das Budget", "channel": 1, "start_ms": 0, "end_ms": 400},
+        _SESSION_CREATED,
+        {"type": "session.updated", "session": _SESSION_CREATED["session"]},
+        {"type": "transcription.text.delta", "text": "Das"},
+        {"type": "transcription.text.delta", "text": " Budget"},
         {
-            "type": "transcript.completed",
+            "type": "transcription.done",
+            "model": "voxtral-mini-transcribe-realtime-2602",
             "text": "Das Budget ist zu hoch.",
-            "channel": 1,
-            "start_ms": 0,
-            "end_ms": 1200,
+            "language": None,
+            "segments": [],
+            "usage": {"prompt_audio_seconds": 1},
+        },
+    ]
+    fake_ws = FakeWebSocket(server_messages)
+    port = VoxtralApiTranscriptionPort(_settings(), ws_connect=_ws_connect_factory(fake_ws))
+
+    async def scenario() -> list[Any]:
+        handle = await port.open_stream(_dual_source_session())
+        await port.push_audio(handle, b"\x00\x00" * 8000)  # 8000 Samples @16kHz = 500ms
+        events = []
+        async for event in port.events(handle):
+            events.append(event)
+        return events
+
+    events = asyncio.run(scenario())
+
+    assert len(events) == 3
+    assert events[0].kind == "partial"
+    assert events[0].text == "Das"
+    assert events[0].speaker == "unknown"  # kein channel-Feld real — ehrlicher Fallback
+    assert events[1].kind == "partial"
+    assert events[1].text == " Budget"
+    assert events[2].kind == "final"
+    assert events[2].text == "Das Budget ist zu hoch."
+    assert events[2].t_end_ms == 500  # aus der lokal gezählten Audiolänge, nicht vom Server
+
+
+def test_events_yields_final_from_transcription_segment_with_speaker_id() -> None:
+    """`transcription.segment` ist laut Referenz-Schema real (text/start/end/speaker_id),
+    in eigenen Probe-Läufen aber NIE beobachtet — hier defensiv abgesichert."""
+    server_messages: list[dict[str, Any]] = [
+        _SESSION_CREATED,
+        {
+            "type": "transcription.segment",
+            "text": "Das Budget ist zu hoch.",
+            "start": 0.0,
+            "end": 1.2,
+            "speaker_id": "1",
         },
     ]
     fake_ws = FakeWebSocket(server_messages)
@@ -140,17 +252,17 @@ def test_events_yields_partial_and_final_transcript_events() -> None:
 
     events = asyncio.run(scenario())
 
-    assert len(events) == 2
-    assert events[0].kind == "partial"
-    assert events[0].text == "Das Budget"
-    assert events[0].speaker == "counterpart"  # Kanal 1 -> System-Audio -> Gegenüber
-    assert events[1].kind == "final"
-    assert events[1].text == "Das Budget ist zu hoch."
-    assert events[1].t_end_ms == 1200
+    assert len(events) == 1
+    assert events[0].kind == "final"
+    assert events[0].speaker == "speaker_1"
+    assert events[0].t_start_ms == 0
+    assert events[0].t_end_ms == 1200
 
 
 def test_events_raises_on_realtime_error_message() -> None:
-    fake_ws = FakeWebSocket([{"type": "error", "message": "quota exceeded"}])
+    fake_ws = FakeWebSocket(
+        [_SESSION_CREATED, {"type": "error", "error": {"message": "quota exceeded", "code": 42}}]
+    )
     port = VoxtralApiTranscriptionPort(_settings(), ws_connect=_ws_connect_factory(fake_ws))
 
     async def scenario() -> None:
@@ -158,14 +270,24 @@ def test_events_raises_on_realtime_error_message() -> None:
         async for _event in port.events(handle):
             pass
 
-    with pytest.raises(VoxtralLiveStreamError):
+    with pytest.raises(VoxtralLiveStreamError, match="quota exceeded"):
         asyncio.run(scenario())
 
 
-def test_close_stream_returns_transcript_result_with_final_segments_only() -> None:
-    server_messages = [
-        {"type": "transcript.delta", "text": "partial", "channel": 0, "start_ms": 0, "end_ms": 100},
-        {"type": "transcript.completed", "text": "final text", "channel": 0, "start_ms": 0, "end_ms": 900},
+def test_close_stream_sends_flush_then_end_and_returns_transcript_result() -> None:
+    """VERIFIZIERT: kein 'session.end' — stattdessen input_audio.flush gefolgt von
+    input_audio.end (das reale Protokoll kennt kein session.end)."""
+    server_messages: list[dict[str, Any]] = [
+        _SESSION_CREATED,
+        {"type": "transcription.text.delta", "text": "partial"},
+        {
+            "type": "transcription.done",
+            "model": "voxtral-mini-transcribe-realtime-2602",
+            "text": "final text",
+            "language": None,
+            "segments": [],
+            "usage": {},
+        },
     ]
     fake_ws = FakeWebSocket(server_messages)
     port = VoxtralApiTranscriptionPort(_settings(), ws_connect=_ws_connect_factory(fake_ws))
@@ -180,17 +302,28 @@ def test_close_stream_returns_transcript_result_with_final_segments_only() -> No
 
     assert result.provider == "voxtral_api"
     assert result.model == "voxtral-mini-transcribe-realtime-2602"
-    assert len(result.segments) == 1  # nur final, kein partial
+    assert len(result.segments) == 1  # nur final (transcription.done), kein partial
     assert result.segments[0].text == "final text"
-    assert result.speakers == ["coach"]  # Kanal 0 -> Mikrofon -> Coach
-    assert result.duration_ms == 900
+    assert result.speakers == ["unknown"]
     assert fake_ws.closed is True
+
+    sent = fake_ws.sent_messages
+    assert sent[-2] == {"type": "input_audio.flush"}
+    assert sent[-1] == {"type": "input_audio.end"}
 
 
 def test_events_publishes_transcript_events_onto_the_bus() -> None:
     """Kern-Akzeptanz W12: publiziert transcript-Events auf den Bus."""
-    server_messages = [
-        {"type": "transcript.completed", "text": "Hallo Welt", "channel": 1, "start_ms": 0, "end_ms": 500},
+    server_messages: list[dict[str, Any]] = [
+        _SESSION_CREATED,
+        {
+            "type": "transcription.done",
+            "model": "voxtral-mini-transcribe-realtime-2602",
+            "text": "Hallo Welt",
+            "language": None,
+            "segments": [],
+            "usage": {},
+        },
     ]
     fake_ws = FakeWebSocket(server_messages)
     bus = InProcessTranscriptEventBus()
@@ -224,7 +357,9 @@ def test_events_publishes_transcript_events_onto_the_bus() -> None:
     assert bus_event.type == "transcript.final"
     assert bus_event.session_id == "live-session-1"
     assert bus_event.tenant_id == "zukunftsbund"
-    assert bus_event.payload.speaker == "counterpart"
+    # Verifizierte Lücke: ohne echtes channel-Feld ist der Sprecher nicht coach/counterpart
+    # zuordenbar — der Bus bekommt ehrlich None statt eines erfundenen Sprechers.
+    assert bus_event.payload.speaker is None
     assert bus_event.payload.text == "Hallo Welt"
     assert bus_event.seq == 1
 

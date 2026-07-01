@@ -7,12 +7,24 @@ Konvention aus ARCHITECTURE.md ("Daten- und Latenzfluss", Welle-12-Entscheid):
 
 - `SessionContext.channels == 2` kennzeichnet eine Dual-Source-Session.
 - System-Audio ist das Gegenüber (`counterpart`, Kanal 1), Mikrofon ist der Coach
-  (`coach`, Kanal 0) — dieselbe Kanal->Sprecher-Zuordnung, die `adapters/stt/voxtral_api.py`
-  beim Parsen von Live-Transkript-Events verwendet (`CHANNEL_TO_SPEAKER`).
+  (`coach`, Kanal 0) — diese Kanal->Sprecher-Zuordnung ist die KONVENTION dieses Moduls.
+
+  **Verifizierte Lücke (2026-07):** `adapters/stt/voxtral_api.py` verwendet `CHANNEL_TO_SPEAKER`
+  NICHT MEHR beim Parsen von Live-Transkript-Events — ein echter Probe-Lauf gegen
+  `wss://api.mistral.ai` hat belegt, dass das reale Realtime-Wireformat kein `channel`-Feld und
+  `AudioFormat` kein `channels`-Feld kennt (rein monaural pro WS-Verbindung). Echte
+  Dual-Source-Trennung würde zwei unabhängige Realtime-Verbindungen erfordern (eine pro
+  Quelle), was eine Erweiterung der `TranscriptionPort.push_audio`-Signatur um einen
+  Quellen-/Kanalparameter nötig machen würde (siehe Moduldokstring `voxtral_api.py`,
+  Abschnitt "Live-Streaming") — bisher nicht umgesetzt. Live-Transkript-Events tragen bis
+  dahin ehrlich `speaker="unknown"` statt einer erfundenen Kanalzuordnung.
 - `CaptureChunk` markiert einen eingehenden PCM-Chunk mit seiner Quelle, BEVOR er an
   `TranscriptionPort.push_audio` weitergereicht wird (Welle 14 Live-WS-API nutzt das, um
   Client-Frames einer Quelle zuzuordnen — das Port-Interface selbst kennt aus
-  ARCHITECTURE.md kein Kanal-Argument in `push_audio`).
+  ARCHITECTURE.md kein Kanal-Argument in `push_audio`). `speaker_for_source`/
+  `channel_for_source` bleiben als Capture-seitige Konvention bestehen (z. B. für Batch-
+  Diarisation und für einen künftigen Multi-Connection-Live-Fix) — nur der Live-WS-Pfad
+  selbst kann sie heute nicht mehr über ein Server-`channel`-Feld einlösen.
 
 Reine Datenstrukturen/Funktionen, kein I/O.
 """

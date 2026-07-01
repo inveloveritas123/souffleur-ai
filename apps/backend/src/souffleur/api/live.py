@@ -208,7 +208,42 @@ def build_live_router(deps: LiveDeps) -> APIRouter:
 
         forward_task = asyncio.ensure_future(bus_forward_loop())
         try:
-            await asyncio.gather(receive_loop(), stt_events_loop())
+            # Finding (Live-Fix, verifiziert gegen die echte Mistral-Realtime-API): der reale
+            # Upstream-WS beendet `events()`s `async for`-Schleife NIE von selbst — der Server
+            # hält die Verbindung offen, bis wir explizit `input_audio.end` senden (siehe
+            # `voxtral_api.py`), und das passiert erst in `close_stream` weiter unten in diesem
+            # `finally`-Block. Mit einem simplen `asyncio.gather(receive_loop(),
+            # stt_events_loop())` hinge die gesamte Verbindung für immer, sobald der Client
+            # "stop" sendet oder die Verbindung trennt: `receive_loop` endet, aber
+            # `stt_events_loop` bleibt für immer im `async for raw in state.websocket` hängen,
+            # weil niemand dem Provider gesagt hat, dass kein weiteres Audio mehr kommt. In den
+            # bisherigen Mocks (endliche Nachrichtenliste, kein echter Socket) fiel das nie auf.
+            #
+            # Fix: `receive_loop` IMMER vollständig abwarten (nie hart abbrechen — sie verarbeitet
+            # noch ausstehende Client-Frames/„stop“ und darf nicht durch eine schneller
+            # fertige `stt_events_loop` wegrasiert werden). `stt_events_loop` läuft nebenläufig
+            # weiter (liefert währenddessen weiter Transkript-/Trigger-Events) und bekommt NACH
+            # Ende von `receive_loop` ein begrenztes Gnadenfenster, um noch ausstehende finale
+            # Segmente zu verarbeiten, bevor sie hart abgebrochen wird — sonst würde exakt das
+            # oben beschriebene ewige Hängen wieder auftreten.
+            stt_task = asyncio.ensure_future(stt_events_loop())
+            try:
+                await receive_loop()
+            finally:
+                if not stt_task.done():
+                    with contextlib.suppress(asyncio.TimeoutError):
+                        # 5s Gnadenfenster: großzügig genug für die letzten ausstehenden
+                        # Finalisierungen (target_streaming_delay_ms=480 + Netzwerk-RTT), aber
+                        # endlich — kein unbegrenztes Hängen mehr nach Session-Ende.
+                        await asyncio.wait_for(asyncio.shield(stt_task), timeout=5.0)
+                if not stt_task.done():
+                    stt_task.cancel()
+                with contextlib.suppress(asyncio.CancelledError, Exception):
+                    await stt_task
+                if not stt_task.cancelled():
+                    stt_task_exc = stt_task.exception()
+                    if stt_task_exc is not None:
+                        raise stt_task_exc
         finally:
             with contextlib.suppress(Exception):
                 await deps.transcription_port.close_stream(handle)

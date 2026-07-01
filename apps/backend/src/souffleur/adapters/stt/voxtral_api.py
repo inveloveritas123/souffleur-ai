@@ -1,4 +1,4 @@
-"""voxtral_api — Default-STT-Adapter über Mistral Voxtral (Batch Welle 4/Fix, Live Welle 12).
+"""voxtral_api — Default-STT-Adapter über Mistral Voxtral (Batch Welle 4/Fix, Live Welle 12/Fix).
 
 ## Batch (`transcribe_batch`, Phase 1) — REST statt SDK (Diarisations-Fix)
 
@@ -21,31 +21,91 @@ Fake-Sprecherwechsel, siehe Direktive "keine Fake-Sprecher erfinden"). Wort-Zeit
 (`words` pro Segment) sind in der verifizierten Response-Form nicht dokumentiert; sie werden
 dennoch defensiv geparst, falls ein zukünftiger API-Stand sie liefert — ohne Codeänderung.
 
-## Live-Streaming (`open_stream`/`push_audio`/`events`/`close_stream`, Phase 2, Welle 12)
+## Live-Streaming (`open_stream`/`push_audio`/`events`/`close_stream`, Phase 2, Welle 12/Fix)
 
-Das installierte SDK (1.10.0) hat **kein** `audio.realtime`-Modul — Live-Streaming geht daher
-über die `websockets`-Bibliothek direkt gegen `wss://api.mistral.ai` (EU-Routing, Gate E1).
+**VERIFIZIERT am echten Endpunkt (2026-07)** — nicht mehr nur eine Annahme. Das installierte
+SDK (1.10.0) hat kein `audio.realtime`-Modul (auch nicht in der neuesten auf PyPI verfügbaren
+Version — geprüft, 1.10.0 ist LATEST); Live-Streaming geht daher über die `websockets`-
+Bibliothek direkt gegen `wss://api.mistral.ai` (EU-Routing, Gate E1).
 
-**Abweichung/Annahme (dokumentiert):** Das exakte Roh-WS-JSON-Wireformat von Mistral
-Realtime ist NICHT Teil des verifizierten Cheatsheets (dort ist nur die SDK-seitige
-`async for event in audio.realtime.transcribe_stream(...)`-Semantik mit Eventnamen wie
-`RealtimeTranscriptionSessionCreated`/`TranscriptionStreamTextDelta`/`TranscriptionStreamDone`
-verifiziert). Dieser Adapter definiert daher ein eigenes, dokumentiertes JSON-Kontraktformat
-für die Roh-WS-Verbindung (`_MSG_TYPE_*`-Konstanten unten), das sich eng an diese verifizierten
-SDK-Eventnamen anlehnt. Sollte das reale Wireformat abweichen, ist nur `_to_transcript_event`/
-das Nachrichtenparsing hier anzupassen — Port-Signatur und Bus-Anbindung bleiben unberührt.
-Tests mocken die WS-Verbindung vollständig (kein echter Netzaufruf, Gate E1/E2).
+Das reale Roh-WS-Wireformat wurde in zwei Schritten ermittelt: (1) der `main`-Branch von
+`mistralai/client-python` (GitHub, noch **nicht** auf PyPI released — `pip install
+'mistralai[realtime]'` existiert dort als Extra, aber nicht in 1.10.0) enthält den vollständigen
+Referenz-Client (`src/mistralai/extra/realtime/{connection,transcription}.py` +
+`src/mistralai/client/models/realtimetranscription*.py`); (2) ein eigenständiges Probe-Skript
+(nicht Teil dieses Repos) hat dieses Format gegen den ECHTEN `wss://api.mistral.ai`-Endpunkt
+mit einem deutschen Test-Audio verifiziert — ein vollständiges, korrektes deutsches Transkript
+kam zurück ("Ich habe gerade ehrlich gesagt wenig Zeit, und das Budget ist bei uns sehr eng,
+verstehe, was müsste sich denn ändern, damit Zeit und Budget für Sie kein Thema mehr wären.").
 
-Dual-Source (ARCHITECTURE.md "Daten- und Latenzfluss", Welle 12-Entscheid): `SessionContext.
-channels == 2` kennzeichnet eine Dual-Source-Session (System-Audio = Gegenüber, Mikrofon =
-Coach). Trägt eine eingehende Server-Nachricht ein `channel`-Feld (0 = Mikrofon/Coach,
-1 = System-Audio/Gegenüber), wird das Sprecher-Label daraus abgeleitet (siehe
-`adapters/capture/dual_source.py` für die kanonische Kanal->Sprecher-Zuordnung); fehlt das
-Feld (Mono-Session), wird der ehrliche Fallback `"unknown"` verwendet.
+**Verifiziertes Wireformat (weicht in mehreren Punkten von der vorherigen Annahme ab):**
+
+- URL: `wss://api.mistral.ai/v1/audio/transcriptions/realtime?model=<model>` — NUR `model`
+  wirkt als Query-Parameter. `encoding`/`sample_rate`/`channels`/`target_streaming_delay_ms`
+  in der Query werden vom Server stillschweigend IGNORIERT (kein Fehler, aber ohne Effekt —
+  empirisch belegt: `session.created` liefert dann `target_streaming_delay_ms: null` und die
+  Default-Werte für `audio_format`, egal was in der Query stand).
+- Handshake: die ERSTE Server-Nachricht nach dem WS-Upgrade ist immer `{"type":
+  "session.created", "session": {"request_id", "model", "audio_format", ...}}`. Erst danach
+  darf der Client `{"type": "session.update", "session": {"audio_format": {...},
+  "target_streaming_delay_ms": ...}}` senden, um das echte Audioformat zu setzen (VOR dem
+  ersten Audio-Chunk — Updates danach werden laut Referenz-Client abgelehnt).
+- Audio-Frames sind **JSON-Textnachrichten, NICHT raw binary** (Abweichung von der
+  ursprünglichen Annahme!): `{"type": "input_audio.append", "audio": "<base64 pcm_s16le>"}`.
+  Ein roher Binär-Frame wird vom Server kommentarlos ignoriert (empirisch belegt: keine
+  Antwort, kein Fehler, keine Transkription). Laut Referenz-Client max. 262144 dekodierte
+  Bytes pro `input_audio.append` (hier defensiv geprüft, siehe `_MAX_INPUT_AUDIO_APPEND_BYTES`).
+- Session-Ende: `{"type": "input_audio.flush"}` gefolgt von `{"type": "input_audio.end"}` (KEIN
+  `session.end`, das gibt es nicht). `input_audio.flush` ALLEIN (ohne `end`) erzwingt bereits
+  ein `transcription.done` für das bisher Gesagte, OHNE die Verbindung zu schließen — das ist
+  der Mechanismus für mehrere finale Segmente auf derselben Verbindung (z. B. an natürlichen
+  Sprechpausen), empirisch bestätigt (zwei Sätze getrennt geflusht → zwei `transcription.done`,
+  Verbindung blieb dazwischen offen und nahm weiteres Audio an).
+- Server-Events (verifizierte Typnamen, komplett anders als ursprünglich angenommen):
+  `session.created`, `session.updated`, `error` (Fehlerdetail unter `error.error.message`/
+  `.code`, NICHT `error.message`), `transcription.language` (`audio_language`),
+  `transcription.text.delta` (`text` — ein Wort-/Token-Fragment, KEIN kumulativer Text, siehe
+  unten), `transcription.segment` (`text`/`start`/`end`/optional `speaker_id` — laut
+  Referenz-Client-Schema real, aber in den eigenen Probe-Läufen NIE beobachtet; hier defensiv
+  unterstützt, aber unverifiziert markiert), `transcription.done` (`text` = vollständiger,
+  seit dem letzten `done`/Sessionstart akkumulierter Text — DAS ist der primäre, tatsächlich
+  beobachtete Finalisierungsmechanismus, ausgelöst durch `input_audio.flush`/`input_audio.end`).
+  Die Verbindung wird vom Server nach `transcription.done` abrupt mit Close-Code 1006
+  geschlossen (kein sauberer Close-Frame) — empirisch beobachtet, hier über die bestehenden
+  `contextlib.suppress(Exception)`-Guards in `close_stream` abgefangen.
+- `transcription.text.delta`/`transcription.done` tragen KEINE Zeitstempel (kein `start_ms`/
+  `end_ms`). Dieser Adapter zählt daher lokal die kumulierte Audiolänge der über `push_audio`
+  gesendeten PCM-Bytes (`_LiveStreamState.pushed_audio_ms`) und stempelt `TranscriptEvent`s
+  damit — ehrlich vom tatsächlich gesendeten Audio abgeleitet, nicht vom Server erfunden.
+
+**Offene, ehrlich dokumentierte Lücke — Dual-Source/Kanaltrennung:** Die vorherige Annahme,
+eine eingehende Server-Nachricht trage ein `channel`-Feld (0 = Mikrofon/Coach, 1 =
+System-Audio/Gegenüber), ist VERIFIZIERT FALSCH — kein einziger der oben genannten
+Event-Typen kennt ein `channel`-Feld, und `AudioFormat` kennt nur `encoding`/`sample_rate`,
+KEIN `channels`-Feld. Das reale Realtime-Protokoll ist rein monaural pro Verbindung; es gibt
+keinen serverseitigen Mechanismus, zwei Audioquellen über EINE WS-Verbindung getrennt zu
+transkribieren. Echte Dual-Source-Unterstützung (Mikrofon=Coach getrennt von
+System-Audio=Gegenüber) würde ZWEI unabhängige Realtime-Verbindungen erfordern (eine pro
+Quelle) — das würde eine Änderung der `TranscriptionPort.push_audio`-Signatur nötig machen
+(sie kennt aktuell keinen Quellen-/Kanalparameter, siehe `adapters/capture/dual_source.py`),
+was außerhalb des Scopes dieses Fixes liegt (Port-Signatur bewusst unberührt gelassen). Bis
+diese Architekturentscheidung getroffen ist: `SessionContext.channels` wird für die
+Live-Verbindung NICHT mehr an den Server übertragen (wirkungslos, siehe oben) und
+Live-Transkript-Events tragen ehrlich `speaker = "unknown"` (Fallback), AUSSER ein
+`transcription.segment`-Event liefert ein reales `speaker_id`-Feld (dann wird — analog zum
+Batch-Pfad — `speaker_<id>` daraus abgeleitet). Der Bus-Publish-Pfad (`_publish_transcript_bus_event`)
+mappt nur `"coach"`/`"counterpart"` auf ein sichtbares `payload.speaker`; alles andere
+(aktuell praktisch immer) wird ehrlich als `None` weitergereicht statt einen Sprecher zu
+erfinden.
+
+Tests mocken die WS-Verbindung vollständig (kein echter Netzaufruf, Gate E1/E2) — das echte
+Wireformat oben wurde einmalig gegen den echten Endpunkt mit einem eigenständigen, nicht im
+Repo enthaltenen Probe-Skript verifiziert (kein API-Key im Repo, keine echten Calls in CI).
 """
 from __future__ import annotations
 
 import asyncio
+import base64
 import contextlib
 import json
 import os
@@ -57,7 +117,6 @@ from typing import Any, Protocol
 import httpx
 import websockets
 
-from souffleur.adapters.capture.dual_source import CHANNEL_TO_SPEAKER
 from souffleur.bus import BusEvent, BusEventPayload, TranscriptEventBus, now_ms
 from souffleur.core.settings import Settings
 from souffleur.ports.types import (
@@ -89,12 +148,23 @@ _DEFAULT_CONTEXT_BIAS_DE = (
 # Timeout) — Diarisation langer Aufnahmen darf dauern, aber nicht unbegrenzt blockieren.
 _BATCH_HTTP_TIMEOUT_SECONDS = 60.0
 
-# Dokumentiertes Roh-WS-Nachrichtenkontrakt dieses Adapters (siehe Modul-Docstring "Abweichung").
+# VERIFIZIERTER Roh-WS-Nachrichtenkontrakt (2026-07, siehe Modul-Docstring "Live-Streaming").
+# Server -> Client:
 _MSG_TYPE_SESSION_CREATED = "session.created"
-_MSG_TYPE_TRANSCRIPT_DELTA = "transcript.delta"  # partial
-_MSG_TYPE_TRANSCRIPT_COMPLETED = "transcript.completed"  # final
-_MSG_TYPE_SESSION_END = "session.end"
+_MSG_TYPE_SESSION_UPDATED = "session.updated"
 _MSG_TYPE_ERROR = "error"
+_MSG_TYPE_LANGUAGE = "transcription.language"
+_MSG_TYPE_SEGMENT = "transcription.segment"  # unverifiziert live, aber reales Schema
+_MSG_TYPE_TEXT_DELTA = "transcription.text.delta"
+_MSG_TYPE_DONE = "transcription.done"
+# Client -> Server:
+_CLIENT_MSG_SESSION_UPDATE = "session.update"
+_CLIENT_MSG_INPUT_AUDIO_APPEND = "input_audio.append"
+_CLIENT_MSG_INPUT_AUDIO_FLUSH = "input_audio.flush"
+_CLIENT_MSG_INPUT_AUDIO_END = "input_audio.end"
+
+# Verifiziertes Server-Limit: max. dekodierte Bytes pro input_audio.append-Nachricht.
+_MAX_INPUT_AUDIO_APPEND_BYTES = 262144
 
 
 class VoxtralBatchTranscriptionError(RuntimeError):
@@ -126,10 +196,15 @@ class _LiveStreamState:
     segments: list[TranscriptEvent] = field(default_factory=list)
     speakers: list[str] = field(default_factory=list)
     seq: int = 0
+    # Lokale Audio-Uhr (Millisekunden seit Sessionstart) — der Server liefert für
+    # transcription.text.delta/transcription.done KEINE Zeitstempel (verifiziert), daher wird
+    # hier ehrlich aus der tatsächlich gesendeten PCM-Menge gerechnet statt etwas zu erfinden.
+    pushed_audio_ms: int = 0
+    finalized_audio_ms: int = 0
 
 
 class VoxtralApiTranscriptionPort:
-    """Default-STT-Adapter (`SOUFFLEUR_STT_PROVIDER=voxtral_api`) — Batch (Fix) + Live (W12)."""
+    """Default-STT-Adapter (`SOUFFLEUR_STT_PROVIDER=voxtral_api`) — Batch (Fix) + Live (W12/Fix)."""
 
     def __init__(
         self,
@@ -144,7 +219,7 @@ class VoxtralApiTranscriptionPort:
         self._ws_connect: WsConnectFn = ws_connect or websockets.connect  # type: ignore[assignment]
         self._streams: dict[str, _LiveStreamState] = {}
 
-    # --- Phase 2 — Live-Streaming (Welle 12) --------------------------------------
+    # --- Phase 2 — Live-Streaming (Welle 12, VERIFIZIERT 2026-07) ------------------
 
     async def open_stream(self, session: SessionContext) -> StreamHandle:
         ws_url = self._live_ws_url(session)
@@ -158,14 +233,38 @@ class VoxtralApiTranscriptionPort:
 
         correlation_id = str(uuid.uuid4())
         handle = StreamHandle(provider_handle=correlation_id, correlation_id=correlation_id)
-        self._streams[handle.provider_handle] = _LiveStreamState(
-            websocket=websocket, session=session, correlation_id=correlation_id
-        )
+        state = _LiveStreamState(websocket=websocket, session=session, correlation_id=correlation_id)
+        self._streams[handle.provider_handle] = state
+
+        try:
+            await self._complete_handshake(state)
+        except Exception:
+            del self._streams[handle.provider_handle]
+            with contextlib.suppress(Exception):
+                await websocket.close()
+            raise
+
         return handle
 
     async def push_audio(self, handle: StreamHandle, pcm_chunk: bytes) -> None:
         state = self._require_stream(handle)
-        await state.websocket.send(pcm_chunk)
+        if len(pcm_chunk) > _MAX_INPUT_AUDIO_APPEND_BYTES:
+            raise VoxtralLiveStreamError(
+                f"PCM-Chunk zu groß ({len(pcm_chunk)} Bytes) — Realtime-API erlaubt max. "
+                f"{_MAX_INPUT_AUDIO_APPEND_BYTES} dekodierte Bytes pro input_audio.append"
+            )
+        # VERIFIZIERT: Audio geht als base64-JSON-Textnachricht, NICHT als roher Binär-Frame
+        # (ein roher Binär-Frame wird vom Server kommentarlos ignoriert — keine Antwort, keine
+        # Transkription, kein Fehler).
+        append_message = {
+            "type": _CLIENT_MSG_INPUT_AUDIO_APPEND,
+            "audio": base64.b64encode(pcm_chunk).decode("ascii"),
+        }
+        try:
+            await state.websocket.send(json.dumps(append_message))
+        except Exception as exc:  # noqa: BLE001 - in VoxtralLiveStreamError übersetzt
+            raise VoxtralLiveStreamError(f"input_audio.append fehlgeschlagen: {exc}") from exc
+        state.pushed_audio_ms += self._pcm_duration_ms(pcm_chunk, state.session.sample_rate)
 
     async def events(self, handle: StreamHandle) -> AsyncIterator[TranscriptEvent]:
         state = self._require_stream(handle)
@@ -174,12 +273,21 @@ class VoxtralApiTranscriptionPort:
                 continue  # nur JSON-Textnachrichten werden geparst
             message = json.loads(raw)
             msg_type = message.get("type")
-            if msg_type == _MSG_TYPE_ERROR:
-                raise VoxtralLiveStreamError(message.get("message", "unbekannter Realtime-Fehler"))
-            if msg_type not in (_MSG_TYPE_TRANSCRIPT_DELTA, _MSG_TYPE_TRANSCRIPT_COMPLETED):
-                continue  # z. B. session.created — kein TranscriptEvent
 
-            event = self._to_transcript_event(message, final=(msg_type == _MSG_TYPE_TRANSCRIPT_COMPLETED))
+            if msg_type == _MSG_TYPE_ERROR:
+                raise VoxtralLiveStreamError(self._extract_error_message(message))
+            if msg_type in (_MSG_TYPE_SESSION_CREATED, _MSG_TYPE_SESSION_UPDATED, _MSG_TYPE_LANGUAGE):
+                continue  # Session-Lifecycle/Sprachmetadaten — kein TranscriptEvent
+
+            if msg_type == _MSG_TYPE_TEXT_DELTA:
+                event = self._partial_event_from_delta(state, message)
+            elif msg_type == _MSG_TYPE_SEGMENT:
+                event = self._final_event_from_segment(message)
+            elif msg_type == _MSG_TYPE_DONE:
+                event = self._final_event_from_done(state, message)
+            else:
+                continue  # unbekannter/zukünftiger Event-Typ — forward-compat, kein Hard-Fail
+
             if event.speaker not in state.speakers:
                 state.speakers.append(event.speaker)
             if event.kind == "final":
@@ -190,8 +298,14 @@ class VoxtralApiTranscriptionPort:
 
     async def close_stream(self, handle: StreamHandle) -> TranscriptResult:
         state = self._streams.pop(handle.provider_handle)
+        # VERIFIZIERT: kein "session.end" — stattdessen flush (erzwingt ein finales
+        # transcription.done für den Rest) gefolgt von end (beendet den Audio-Input). Der
+        # Server schließt danach abrupt mit Close-Code 1006 (kein sauberer Close-Frame) —
+        # deshalb bleiben alle drei Schritte defensiv `contextlib.suppress`-geschützt.
         with contextlib.suppress(Exception):
-            await state.websocket.send(json.dumps({"type": _MSG_TYPE_SESSION_END}))
+            await state.websocket.send(json.dumps({"type": _CLIENT_MSG_INPUT_AUDIO_FLUSH}))
+        with contextlib.suppress(Exception):
+            await state.websocket.send(json.dumps({"type": _CLIENT_MSG_INPUT_AUDIO_END}))
         with contextlib.suppress(Exception):
             await state.websocket.close()
 
@@ -265,14 +379,73 @@ class VoxtralApiTranscriptionPort:
         ws_base = self._settings.mistral_base_url.replace("https://", "wss://").replace(
             "http://", "ws://"
         )
-        return (
-            f"{ws_base}{LIVE_WS_PATH}"
-            f"?model={self._settings.model_stt_live}"
-            f"&encoding={LIVE_AUDIO_ENCODING}"
-            f"&sample_rate={session.sample_rate}"
-            f"&channels={session.channels}"
-            f"&target_streaming_delay_ms={TARGET_STREAMING_DELAY_MS}"
-        )
+        # VERIFIZIERT (2026-07, echter Probe-Lauf): NUR `model` wirkt als Query-Parameter.
+        # encoding/sample_rate/target_streaming_delay_ms werden vom Server ignoriert, wenn sie
+        # hier angehängt werden — sie müssen per session.update NACH session.created gesetzt
+        # werden (siehe `_complete_handshake`). `channels` existiert im Wireformat gar nicht
+        # (siehe Moduldokstring "Offene, ehrlich dokumentierte Lücke").
+        return f"{ws_base}{LIVE_WS_PATH}?model={self._settings.model_stt_live}"
+
+    async def _complete_handshake(self, state: _LiveStreamState) -> None:
+        """Wartet auf `session.created` (VERIFIZIERT: erste Server-Nachricht nach Connect) und
+        sendet danach `session.update`, um `audio_format`/`target_streaming_delay_ms` explizit
+        zu setzen — spiegelt `mistralai/client-python` (main-Branch,
+        `extra/realtime/transcription.py::_recv_handshake`)."""
+        raw = await self._recv_one(state.websocket)
+        message = self._parse_message(raw)
+        if message.get("type") == _MSG_TYPE_ERROR:
+            raise VoxtralLiveStreamError(self._extract_error_message(message))
+        if message.get("type") != _MSG_TYPE_SESSION_CREATED:
+            raise VoxtralLiveStreamError(
+                f"Unerwartete erste Realtime-Nachricht (erwartet {_MSG_TYPE_SESSION_CREATED}): "
+                f"{message!r}"
+            )
+
+        update_message = {
+            "type": _CLIENT_MSG_SESSION_UPDATE,
+            "session": {
+                "audio_format": {
+                    "encoding": LIVE_AUDIO_ENCODING,
+                    "sample_rate": state.session.sample_rate,
+                },
+                "target_streaming_delay_ms": TARGET_STREAMING_DELAY_MS,
+            },
+        }
+        try:
+            await state.websocket.send(json.dumps(update_message))
+        except Exception as exc:  # noqa: BLE001 - in VoxtralLiveStreamError übersetzt
+            raise VoxtralLiveStreamError(f"session.update fehlgeschlagen: {exc}") from exc
+
+    @staticmethod
+    async def _recv_one(websocket: _WsConnection) -> Any:
+        try:
+            return await websocket.__aiter__().__anext__()
+        except StopAsyncIteration as exc:
+            raise VoxtralLiveStreamError(
+                "Realtime-Verbindung endete vor session.created (kein Handshake-Empfang)"
+            ) from exc
+        except VoxtralLiveStreamError:
+            raise
+        except Exception as exc:  # noqa: BLE001 - in VoxtralLiveStreamError übersetzt
+            raise VoxtralLiveStreamError(f"Handshake-Empfang fehlgeschlagen: {exc}") from exc
+
+    @staticmethod
+    def _parse_message(raw: Any) -> dict[str, Any]:
+        text = raw.decode("utf-8") if isinstance(raw, bytes) else raw
+        parsed = json.loads(text)
+        if not isinstance(parsed, dict):
+            raise VoxtralLiveStreamError(f"Unerwartetes Nachrichtenformat (kein JSON-Objekt): {raw!r}")
+        return parsed
+
+    @staticmethod
+    def _pcm_duration_ms(pcm_chunk: bytes, sample_rate: int) -> int:
+        """pcm_s16le mono: 2 Bytes/Sample. Dual-Source (2 Kanäle) wird auf dem realen
+        Live-Wireformat aktuell nicht unterstützt (siehe Moduldokstring) — hier zählt jeder
+        Chunk als Mono-Sample-Block."""
+        if sample_rate <= 0:
+            return 0
+        samples = len(pcm_chunk) // 2
+        return round(samples / sample_rate * 1000)
 
     def _require_stream(self, handle: StreamHandle) -> _LiveStreamState:
         state = self._streams.get(handle.provider_handle)
@@ -283,15 +456,58 @@ class VoxtralApiTranscriptionPort:
         return state
 
     @staticmethod
-    def _to_transcript_event(message: dict[str, Any], final: bool) -> TranscriptEvent:
-        channel = message.get("channel")
-        speaker = CHANNEL_TO_SPEAKER.get(channel, _FALLBACK_SPEAKER)
+    def _extract_error_message(message: dict[str, Any]) -> str:
+        """`error`-Event-Form ist verifiziert `{"type":"error","error":{"message","code"}}` —
+        `message` selbst kann laut Referenz-Schema String ODER Objekt sein (defensiv behandelt)."""
+        error = message.get("error")
+        if isinstance(error, dict):
+            detail = error.get("message")
+            if isinstance(detail, str):
+                return detail
+            if detail is not None:
+                return json.dumps(detail, ensure_ascii=False)
+        return "unbekannter Realtime-Fehler"
+
+    def _partial_event_from_delta(
+        self, state: _LiveStreamState, message: dict[str, Any]
+    ) -> TranscriptEvent:
+        """`transcription.text.delta` trägt nur ein Text-Fragment (Wort/Token), KEINE
+        Zeitstempel — Zeit wird lokal aus der bisher gesendeten Audiolänge abgeleitet."""
         return TranscriptEvent(
-            kind="final" if final else "partial",
+            kind="partial",
+            speaker=_FALLBACK_SPEAKER,
+            text=message.get("text", "") or "",
+            t_start_ms=state.finalized_audio_ms,
+            t_end_ms=state.pushed_audio_ms,
+        )
+
+    def _final_event_from_segment(self, message: dict[str, Any]) -> TranscriptEvent:
+        """`transcription.segment` — laut Referenz-Schema real (`text`/`start`/`end`/optional
+        `speaker_id`), in eigenen Probe-Läufen aber NIE beobachtet (unverifiziert live,
+        defensiv unterstützt für einen Fall, in dem der Server sie doch sendet)."""
+        speaker = self._extract_speaker_label(message)
+        return TranscriptEvent(
+            kind="final",
             speaker=speaker,
             text=message.get("text", "") or "",
-            t_start_ms=int(message.get("start_ms", 0) or 0),
-            t_end_ms=int(message.get("end_ms", 0) or 0),
+            t_start_ms=self._seconds_to_ms(message.get("start", 0.0)),
+            t_end_ms=self._seconds_to_ms(message.get("end", 0.0)),
+        )
+
+    def _final_event_from_done(self, state: _LiveStreamState, message: dict[str, Any]) -> TranscriptEvent:
+        """`transcription.done` — VERIFIZIERT der tatsächlich beobachtete Finalisierungspfad,
+        ausgelöst durch `input_audio.flush`/`input_audio.end`. Trägt den vollständigen Text seit
+        dem letzten `done` (oder Sessionstart), aber KEINE Zeitstempel — Zeit wird aus der
+        lokalen Audio-Uhr übernommen."""
+        t_start_ms = state.finalized_audio_ms
+        t_end_ms = state.pushed_audio_ms
+        state.finalized_audio_ms = t_end_ms
+        return TranscriptEvent(
+            kind="final",
+            speaker=_FALLBACK_SPEAKER,
+            text=message.get("text", "") or "",
+            t_start_ms=t_start_ms,
+            t_end_ms=t_end_ms,
         )
 
     async def _publish_transcript_bus_event(self, state: _LiveStreamState, event: TranscriptEvent) -> None:
@@ -375,7 +591,9 @@ class VoxtralApiTranscriptionPort:
 
     @staticmethod
     def _extract_speaker_label(segment: dict[str, Any]) -> str:
-        """Sprecher-Label aus dem verifizierten `speaker_id`-Feld (int|None) — kein Fake-Sprecher."""
+        """Sprecher-Label aus dem verifizierten `speaker_id`-Feld (int|None) — kein Fake-Sprecher.
+        Wird sowohl vom Batch-Pfad (`segments[].speaker_id`) als auch defensiv vom Live-Pfad
+        (`transcription.segment.speaker_id`) verwendet — dieselbe Konvention, einzige Quelle."""
         speaker_id = segment.get("speaker_id")
         if speaker_id is None or speaker_id == "":
             return _FALLBACK_SPEAKER

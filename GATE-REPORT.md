@@ -1,4 +1,4 @@
-# GATE-REPORT — target=`.` — 2026-07-01T15:28:44Z
+# GATE-REPORT — target=`.` — 2026-07-01T15:57:48Z
 
 ## Zusammenfassung
 - **Ergebnis:** GRUEN
@@ -26,12 +26,12 @@
 | 2_static | B1 | block,deterministic,★pflicht | PASS | ruff sauber |
 | 2_static | B2 | block,deterministic,★pflicht | PASS | mypy sauber |
 | 2_static | B3 | block,deterministic,★pflicht | PASS | Build/Compile sauber (88 .py) |
-| 2_static | D1 | block,deterministic,★pflicht | PASS | kein High/Medium (425 Low, beraten) |
+| 2_static | D1 | block,deterministic,★pflicht | PASS | kein High/Medium (437 Low, beraten) |
 | 2_static | D2 | block,deterministic | SKIP | pip-audit/safety nicht installiert |
 | 2_static | D3 | block,deterministic,★pflicht | PASS | kein Secret gefunden |
 | 2_static | D4 | warn,deterministic | SKIP | pip-licenses nicht installiert |
-| 3_tests | C1 | block,deterministic,★pflicht | PASS | Tests grün (173 Tests in tests) |
-| 3_tests | C2 | block,deterministic,★pflicht | PASS | Coverage 96% >= 70% |
+| 3_tests | C1 | block,deterministic,★pflicht | PASS | Tests grün (177 Tests in tests) |
+| 3_tests | C2 | block,deterministic,★pflicht | PASS | Coverage 94% >= 70% |
 | 3_tests | C3 | block,deterministic | SKIP | keine Integrationstests |
 | 3_tests | C4 | block,deterministic | FAIL | E2E rot (Playwright, apps/web/playwright.config.ts) |
 | 3_tests | C5 | warn,deterministic | SKIP | keine Concurrency-/Race-Tests |
@@ -49,9 +49,9 @@
 | 5_integrity | F3 | warn,deterministic | SKIP | kein Snapshot-Verzeichnis |
 | 6_perf | G1 | warn,deterministic | SKIP | kein Lasttest konfiguriert |
 | 6_perf | G2 | warn,deterministic | SKIP | kein Build-Output (dist/ oder build/) |
-| 6_perf | G3 | warn,deterministic | WARN | 16 Query-in-Loop-Verdacht (N+1) |
+| 6_perf | G3 | warn,deterministic | WARN | 15 Query-in-Loop-Verdacht (N+1) |
 | 7_maintainability | H1 | warn,deterministic | PASS | alle TODO/FIXME getrackt (oder keine) |
-| 7_maintainability | H2 | warn,deterministic | WARN | 5 Funktion(en) ueber Komplexitaet 12 |
+| 7_maintainability | H2 | warn,deterministic | WARN | 6 Funktion(en) ueber Komplexitaet 12 |
 | 7_maintainability | H3 | warn,deterministic | WARN | README enthaelt 1 Platzhalter |
 | 7_maintainability | H4 | block,deterministic,★pflicht | PASS | CHANGELOG vorhanden, 1 Einträge, newest-top |
 | 7_maintainability | H5 | warn,deterministic | PASS | 17 offene Welle(n) self-contained (Dateien/Verbote/Smoke/Akzeptanz) |
@@ -78,16 +78,15 @@ at _TestTypeImpl._describe (/Users/roberthargesheimer/Documents/…at _TestTypeI
 at Function.describe (/Users/roberthargesheimer/Documents/Claude…at Function.describe (/Users/roberthargesheimer/Documents/Claude/Projects/Souffleur AI/apps/web/node_modules/playwright/lib/common/index.js:1220:12)
 at /Users/roberthargesheimer/Documents/Claude/Projects/Souffleur…at /Users/roberthargesheimer/Documents/Claude/Projects/Souffleur AI/apps/web/tests/e2e/phase1-flow.spec.ts:19:6
 *********************
-- **G3** — WARN — 16 Query-in-Loop-Verdacht (N+1)
+- **G3** — WARN — 15 Query-in-Loop-Verdacht (N+1)
     - `tests/unit/test_api_live_ws.py:107` [n+1-query] ***********
     - `apps/backend/src/souffleur/bus/event_bus.py:141` [n+1-query] *********
     - `apps/backend/src/souffleur/adapters/llm/mistral.py:58` [n+1-query] *********
-    - `apps/backend/src/souffleur/adapters/stt/voxtral_api.py:176` [n+1-query] ***********
-    - `apps/backend/src/souffleur/adapters/stt/voxtral_api.py:178` [n+1-query] ***********
-    - `apps/backend/src/souffleur/adapters/stt/voxtral_api.py:351` [n+1-query] ***************
-    - `apps/backend/src/souffleur/adapters/stt/voxtral_api.py:356` [n+1-query] ***************
-    - `apps/backend/src/souffleur/adapters/stt/voxtral_api.py:357` [n+1-query] ***************
-    - `apps/backend/src/souffleur/adapters/stt/voxtral_api.py:358` [n+1-query] ***************
+    - `apps/backend/src/souffleur/adapters/stt/voxtral_api.py:275` [n+1-query] ***********
+    - `apps/backend/src/souffleur/adapters/stt/voxtral_api.py:567` [n+1-query] ***************
+    - `apps/backend/src/souffleur/adapters/stt/voxtral_api.py:572` [n+1-query] ***************
+    - `apps/backend/src/souffleur/adapters/stt/voxtral_api.py:573` [n+1-query] ***************
+    - `apps/backend/src/souffleur/adapters/stt/voxtral_api.py:574` [n+1-query] ***************
     - `apps/backend/src/souffleur/adapters/stt/gladia.py:231` [n+1-query] ****************
     - `apps/backend/src/souffleur/adapters/stt/gladia.py:234` [n+1-query] ********
     - `apps/backend/src/souffleur/adapters/stt/gladia.py:240` [n+1-query] ********
@@ -95,12 +94,13 @@ at /Users/roberthargesheimer/Documents/Claude/Projects/Souffleur…at /Users/rob
     - `apps/backend/src/souffleur/api/live.py:153` [n+1-query] ***********
     - `apps/backend/src/souffleur/api/live.py:157` [n+1-query] ***********
     - `apps/backend/src/souffleur/api/live.py:164` [n+1-query] ***********
-- **H2** — WARN — 5 Funktion(en) ueber Komplexitaet 12
+- **H2** — WARN — 6 Funktion(en) ueber Komplexitaet 12
     - `apps/backend/tests/test_voxtral_api.py:102` [complexity] test_transcribe_batch_returns_diarized_result_with_word_timestamps() = 16
     - `apps/backend/tests/test_voxtral_local.py:131` [complexity] test_transcribe_batch_parses_segments_and_words() = 14
     - `apps/backend/tests/test_gladia.py:173` [complexity] test_transcribe_batch_happy_path_parses_diarized_result() = 19
     - `apps/backend/tests/test_protocol_api.py:212` [complexity] test_post_protocol_with_valid_consent_returns_diarized_protocol() = 29
     - `apps/backend/tests/test_live_api.py:182` [complexity] test_live_ws_accepts_audio_after_consent_and_forwards_transcript_and_card_events() = 21
+    - `apps/backend/src/souffleur/api/live.py:90` [complexity] live_endpoint() = 18
 - **H3** — WARN — README enthaelt 1 Platzhalter
     - `README.md:25` [docs-placeholder] privacy/          DSGVO-Artefakt…privacy/          DSGVO-Artefakte (DATA-FLOW, DPIA, PROCESSING-REGISTER, TOMs, …)
 
