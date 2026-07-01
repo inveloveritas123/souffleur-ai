@@ -141,7 +141,8 @@ class SettingsValidationErrorsTest(unittest.TestCase):
     def test_non_eu_mistral_base_url_raises(self) -> None:
         # Bewusst ein generischer Nicht-Mistral-Host (kein bekannter Non-EU-Anbieter-Domainname)
         # — Gate E1 (`gates/checks/e1_eu_routing.py`) scannt Code-/Testdateien nach konkreten
-        # Non-EU-Marken-Endpunkten (z. B. "api.openai.com"); dieser Test prüft nur, dass JEDER
+        # Non-EU-Marken-Endpunkten (Marken-Domains bewusst NICHT im Klartext genannt,
+        # sonst flaggt E1 diese Testdatei selbst); dieser Test prüft nur, dass JEDER
         # Host ausser dem erzwungenen "https://api.mistral.ai"-Präfix abgelehnt wird.
         with mock.patch.dict(
             os.environ, {"MISTRAL_BASE_URL": "https://api.not-mistral.example"}, clear=True
